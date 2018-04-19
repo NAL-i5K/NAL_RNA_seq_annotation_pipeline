@@ -6,18 +6,18 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(description='Easy to use pipeline built for large-scale RNA-seq mapping with a genome assembly')
     parser.add_argument('files', metavar='files', type=str, nargs='+',
                         help='input files')
-    parser.add_argument('--platform', nargs='?', default='ILLUMINA',
+    parser.add_argument('-p', '--platform', nargs='?', default='ILLUMINA',
                         help='Platform of sequencing')
-    parser.add_argument('--adaptor', nargs='?', default=None,
+    parser.add_argument('-a', '--adaptor', nargs='?', default=None,
                         help='input adaptor file')
-    parser.add_argument('--model', nargs='?', default=None,
+    parser.add_argument('-m', '--model', nargs='?', default=None,
                         help='Model of the seqencer')
-    parser.add_argument('--layout', nargs='?', default=None)
-    parser.add_argument('--name', nargs='?',
+    parser.add_argument('-l', '--layout', nargs='?', default=None, help='single end or ')
+    parser.add_argument('-n', '--name', nargs='?',
                         default=datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
                         help='name of the output folder, if not specified, use the time of start')
     parser.add_argument('--outdir', nargs='?',
-                        default='',
+                        default='.',
                         help='directory of output folder at, if not specified, use current folder')
     # option to determine it's a sra file or not
     # TODO
