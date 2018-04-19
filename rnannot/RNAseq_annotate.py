@@ -1,6 +1,6 @@
 import os
 from os import path
-from rnannot.parser import parse_args
+from parser import parse_args
 from sys import argv
 
 args = parse_args(argv[1:])  # exclude the script name
