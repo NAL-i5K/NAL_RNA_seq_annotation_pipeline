@@ -9,8 +9,8 @@ def parse_args(argv):
                         help='A sra file that you want mapped to an genome')
     parser.add_argument('-g', '--genome', dest='genome')
     parser.add_argument('-p', '--platform', dest='platform', help='Platform of sequencing')
-    parser.add_argument('-a', '--adaptor', nargs='?', help='input adaptor file')
-    parser.add_argument('-m', '--model', dest='model',help='Model of the seqencer')
+    parser.add_argument('-a', '--adapter', dest='adapter', nargs='?', help='input adaptor file')
+    parser.add_argument('-m', '--model', dest='model', help='Model of the seqencer')
     parser.add_argument('-l', '--layout', help='single end or paried-end')
     parser.add_argument('-n', '--name', nargs='?',
                         default=datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
