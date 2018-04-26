@@ -1,42 +1,24 @@
 import argparse
 import datetime
+import sys
 
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='Easy to use pipeline built for large-scale RNA-seq mapping with a genome assembly')
-    parser.add_argument('files', metavar='files', type=str, nargs='+',
-                        help='input files')
-    parser.add_argument('-p', '--platform', nargs='?', default='ILLUMINA',
-                        help='Platform of sequencing')
-    parser.add_argument('-a', '--adaptor', nargs='?', default=None,
-                        help='input adaptor file')
-    parser.add_argument('-m', '--model', nargs='?', default=None,
-                        help='Model of the seqencer')
-    parser.add_argument('-l', '--layout', nargs='?', default=None, help='single end or ')
+    parser.add_argument('-f', '--file', dest='file', type=str,
+                        help='A sra file that you want mapped to an genome')
+    parser.add_argument('-g', '--genome', dest='genome')
+    parser.add_argument('-p', '--platform', dest='platform', help='Platform of sequencing')
+    parser.add_argument('-a', '--adaptor', nargs='?', help='input adaptor file')
+    parser.add_argument('-m', '--model', dest='model',help='Model of the seqencer')
+    parser.add_argument('-l', '--layout', help='single end or paried-end')
     parser.add_argument('-n', '--name', nargs='?',
                         default=datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
                         help='name of the output folder, if not specified, use the time of start')
-    parser.add_argument('--outdir', nargs='?',
-                        default='.',
+    parser.add_argument('-o', '--outdir', dest='outdir', nargs='?', default='.',
                         help='directory of output folder at, if not specified, use current folder')
-    # option to determine it's a sra file or not
-    # TODO
-    parser.add_argument('--sra', help='If this argument is specified, the input should be a SRA run',
-                        action='store_true')
     args = parser.parse_args(argv)
-    if args.platform is None:
-        raise Exception('No platform provided')
-
-    if args.name is None:
-        raise Exception('No name provided')
-
-    # if args.sra is None:
-    #     raise Exception('No sra run accession provide')
-
-    # handle invalid input arguments
-    if len(args.files) not in [1, 2]:
-        raise Exception('Too many input files')
-    elif args.sra and not (len(args.files) == 1):
-        raise Exception('Expected only one file for sra')
-
+    if args.platform is None or args.name is None:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
     return args
