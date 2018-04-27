@@ -1,12 +1,13 @@
 # NAL RNA-Seq Annotation Pipeline
 
-A RNA-Seq annotation pipeline based on FastQC, Trimmomatic, and HISAT2.
+A RNA-Seq annotation pipeline based on SRA Toolkit, fastQC, Trimmomatic, HISAT2, and samtools.
 
 ## Prerequisite
 
 - Python 3.5
-- SRA Toolkit
 - Java
+- SRA Toolkit
+- samtools
 
 ## Installation
 
@@ -14,7 +15,7 @@ A RNA-Seq annotation pipeline based on FastQC, Trimmomatic, and HISAT2.
 
 ## Example Usage
 
-- `python3 ./rnannot/RNAseq_annotate.py -m "Illumina Genome Analyzer II" -p ILLUMINA -l single -f /project/nal_genomics/leo/issue_270/output/sra_runs_data/SRR2095935 -g ../GCA_000696855.1_Hvit_1.0_genomic.fna.gz`
+- `python3 ./rnannot/RNAseq_annotate.py -i ./example/197043.tsv -g ../GCA_000696855.1_Hvit_1.0_genomic.fna.gz`
 
 ## Test Environment
 - `python -m unittest -f test/test_setup.py`
