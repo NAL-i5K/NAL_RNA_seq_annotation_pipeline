@@ -64,11 +64,14 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
             pass
         subprocess.run([get_hisat2_command_path('hisat2-build'), genome, path.join(output_prefix, genome_file_name)])
         subprocess.run([get_hisat2_command_path('hisat2'), '-x', path.join(output_prefix, genome_file_name), '-1', path.join(output_prefix, 'output_1.fastq'), '-2', path.join(output_prefix, 'output_2.fastq'), '-S', path.join(output_prefix, 'output.sam')])
+    # sort and convert to the bam file
+    subprocess.run(['samtools', 'sort', '-o', path.join(output_prefix, 'output.bam'), '-O', 'bam', '-T', path.join(output_prefix, 'output')])
     return (True, '')
 
-def merge_files(files):
-    # TODO: merge sam files
-    pass
+def merge_files(files, outdir):  # merge sam files
+    args = ['samtools', 'merge', path.join(outdir, 'output.bam')]
+    args.extend(files) 
+    subprocess.run(args)
 
 if __name__ == '__main__':
     # parse the arguments, exclude the script name
@@ -116,4 +119,5 @@ if __name__ == '__main__':
         else:
             print(err_message)
     # TODO: combine the sam files together and conver to BAM file
+    merge_files(files_for_merge, path.join(args.outdir, args.name))
 
