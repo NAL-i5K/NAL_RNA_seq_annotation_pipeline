@@ -45,13 +45,13 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
         with ZipFile(path.join(output_prefix, sra_file_name + '_1_fastqc.zip'), 'r') as zip_ref:
             zip_ref.extractall(output_prefix)
         if platform == 'ILLUMINA' and (model.startswith('Illumina HiSeq') or model.startswith('Illumina MiSeq')):
-            subprocess.run(['java', '-jar', trimmomatic_jar_path, 'SE', path.join(output_prefix, sra_file_name + '_1.fastq'), path.join(output_prefix, 'output.fastq'), 'ILLUMINACLIP:' + get_trimmomatic_adapter_path('TruSeq3-SE.fa') + ':2:30:10', 'LEADING:3', 'TRAILING:3', 'SLIDINGWINDOW:4:15', 'MINLEN:36'])
+            subprocess.run(['java', '-jar', trimmomatic_jar_path, 'SE', path.join(output_prefix, sra_file_name + '_1.fastq'), path.join(output_prefix, 'output.fastq'), 'ILLUMINACLIP:' + get_trimmomatic_adapter_path('TruSeq3-SE.fa') + ':2:30:10', 'LEADING:3', 'TRAILING:3', 'SLIDINGWINDOW:4:15', 'MINLEN:36', 'TOPHRED33'])
         elif platform == 'ILLUMINA' and model.startswith('Illumina Genome Analyzer II'):
-            subprocess.run(['java', '-jar', trimmomatic_jar_path, 'SE', path.join(output_prefix, sra_file_name + '_1.fastq'), path.join(output_prefix, 'output.fastq'), 'ILLUMINACLIP:' + get_trimmomatic_adapter_path('TruSeq2-SE.fa') + ':2:30:10', 'LEADING:3', 'TRAILING:3', 'SLIDINGWINDOW:4:15', 'MINLEN:36'])
+            subprocess.run(['java', '-jar', trimmomatic_jar_path, 'SE', path.join(output_prefix, sra_file_name + '_1.fastq'), path.join(output_prefix, 'output.fastq'), 'ILLUMINACLIP:' + get_trimmomatic_adapter_path('TruSeq2-SE.fa') + ':2:30:10', 'LEADING:3', 'TRAILING:3', 'SLIDINGWINDOW:4:15', 'MINLEN:36', 'TOPHRED33'])
         else: 
             # Use adapter file from BBMap for other platforms and models.
             # TODO: Another strategy can be used is to guess adapter from FastQC output
-            subprocess.run(['java', '-jar', trimmomatic_jar_path, 'SE', path.join(output_prefix, sra_file_name + '_1.fastq'), path.join(output_prefix, 'output.fastq'), 'ILLUMINACLIP:' + get_bbmap_adapter_path() + ':2:30:10', 'LEADING:3', 'TRAILING:3', 'SLIDINGWINDOW:4:15', 'MINLEN:36'])
+            subprocess.run(['java', '-jar', trimmomatic_jar_path, 'SE', path.join(output_prefix, sra_file_name + '_1.fastq'), path.join(output_prefix, 'output.fastq'), 'ILLUMINACLIP:' + get_bbmap_adapter_path() + ':2:30:10', 'LEADING:3', 'TRAILING:3', 'SLIDINGWINDOW:4:15', 'MINLEN:36', 'TOPHRED33'])
         print('Aligning ...')
         subprocess.run([get_hisat2_command_path('hisat2-build'), genome, path.join(output_prefix, genome_file_name)])
         subprocess.run([get_hisat2_command_path('hisat2'), '-x', path.join(output_prefix, genome_file_name), '-U', path.join(output_prefix, 'output.fastq'), '-S', path.join(output_prefix, 'output.sam')])
@@ -68,13 +68,13 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
         with ZipFile(path.join(output_prefix, sra_file_name + '_2_fastqc.zip'), 'r') as zip_ref:
             zip_ref.extractall(output_prefix)
         if platform == 'ILLUMINA' and (model.startswith('Illumina HiSeq') or model.startswith('Illumina MiSeq')): 
-            subprocess.run(['java', '-jar', trimmomatic_jar_path, 'PE', path.join(output_prefix, sra_file_name + '_1.fastq'), path.join(output_prefix, sra_file_name + '_2.fastq'), path.join(output_prefix, 'output_1.fastq'), path.join(output_prefix, 'output_2.fastq'), 'ILLUMINACLIP:' + get_trimmomatic_adapter_path('TruSeq3-PE.fa') + ':2:30:10', 'LEADING:3', 'TRAILING:3', 'SLIDINGWINDOW:4:15', 'MINLEN:36'])
+            subprocess.run(['java', '-jar', trimmomatic_jar_path, 'PE', path.join(output_prefix, sra_file_name + '_1.fastq'), path.join(output_prefix, sra_file_name + '_2.fastq'), path.join(output_prefix, 'output_1.fastq'), path.join(output_prefix, 'output_2.fastq'), 'ILLUMINACLIP:' + get_trimmomatic_adapter_path('TruSeq3-PE.fa') + ':2:30:10', 'LEADING:3', 'TRAILING:3', 'SLIDINGWINDOW:4:15', 'MINLEN:36', 'TOPHRED33'])
         elif platform == 'ILLUMINA' and model.startswith('Illumina Genome Analyzer II'):
-            subprocess.run(['java', '-jar', trimmomatic_jar_path, 'PE', path.join(output_prefix, sra_file_name + '_1.fastq'), path.join(output_prefix, sra_file_name + '_2.fastq'), path.join(output_prefix, 'output_1.fastq'), path.join(output_prefix, 'output_2.fastq'), 'ILLUMINACLIP:' + get_trimmomatic_adapter_path('TruSeq2-PE.fa') + ':2:30:10', 'LEADING:3', 'TRAILING:3', 'SLIDINGWINDOW:4:15', 'MINLEN:36'])
+            subprocess.run(['java', '-jar', trimmomatic_jar_path, 'PE', path.join(output_prefix, sra_file_name + '_1.fastq'), path.join(output_prefix, sra_file_name + '_2.fastq'), path.join(output_prefix, 'output_1.fastq'), path.join(output_prefix, 'output_2.fastq'), 'ILLUMINACLIP:' + get_trimmomatic_adapter_path('TruSeq2-PE.fa') + ':2:30:10', 'LEADING:3', 'TRAILING:3', 'SLIDINGWINDOW:4:15', 'MINLEN:36', 'TOPHRED33'])
         else:
             # use BBTool (BBMerge) to determine the adapter first, then run the Trimmomatic
             subprocess.run([get_bbmap_command_path('bbmerge.sh'), 'in1=' + path.join(output_prefix, sra_file_name + '_1.fastq'), 'in2=' + path.join(output_prefix, sra_file_name + '_2.fastq'), 'outa=' + path.join(output_prefix, 'adapters.fa')])
-            subprocess.run(['java', '-jar', trimmomatic_jar_path, 'PE', path.join(output_prefix, sra_file_name + '_1.fastq'), path.join(output_prefix, sra_file_name + '_2.fastq'), path.join(output_prefix, 'output_1.fastq'), path.join(output_prefix, 'output_2.fastq'), 'ILLUMINACLIP:' + path.join(output_prefix, 'adapters.fa') + ':2:30:10', 'LEADING:3', 'TRAILING:3', 'SLIDINGWINDOW:4:15', 'MINLEN:36'])
+            subprocess.run(['java', '-jar', trimmomatic_jar_path, 'PE', path.join(output_prefix, sra_file_name + '_1.fastq'), path.join(output_prefix, sra_file_name + '_2.fastq'), path.join(output_prefix, 'output_1.fastq'), path.join(output_prefix, 'output_2.fastq'), 'ILLUMINACLIP:' + path.join(output_prefix, 'adapters.fa') + ':2:30:10', 'LEADING:3', 'TRAILING:3', 'SLIDINGWINDOW:4:15', 'MINLEN:36', 'TOPHRED33'])
         print('Aligning ...')
         subprocess.run([get_hisat2_command_path('hisat2-build'), genome, path.join(output_prefix, genome_file_name)])
         subprocess.run([get_hisat2_command_path('hisat2'), '-x', path.join(output_prefix, genome_file_name), '-1', path.join(output_prefix, 'output_1.fastq'), '-2', path.join(output_prefix, 'output_2.fastq'), '-S', path.join(output_prefix, 'output.sam')])
