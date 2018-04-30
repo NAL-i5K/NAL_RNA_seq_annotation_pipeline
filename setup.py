@@ -1,6 +1,6 @@
 from urllib.request import urlretrieve
 from stat import S_IXUSR, S_IXOTH, S_IXGRP, S_IRUSR, S_IROTH, S_IRGRP, S_IWUSR
-from os import mkdir, chmod
+from os import mkdir, chmod, remove
 from os.path import dirname, abspath, join
 from zipfile import ZipFile
 import tarfile
@@ -49,5 +49,7 @@ tar = tarfile.open(join(lib_dir, 'BBMap_38.00.tar.gz'), 'r:gz')
 tar.extractall(lib_dir)
 tar.close()
 
-# TODO: clean up files
-
+print('Cleaning the files ...')
+files = ['BBMap_38.00.tar.gz', 'fastqc_v0.11.7.zip', 'hisat2-2.1.0-Linux_x86_64.zip', 'Trimmomatic-0.36.zip']
+for f in files:
+    remove(join(lib_dir, f))
