@@ -26,6 +26,7 @@ A RNA-Seq annotation pipeline based on SRA Toolkit, fastQC, Trimmomatic, HISAT2,
   - `Platform` column represents the sequencer's brand. We will recognize `ILLUMINA` in this field, because it determines the adapters used in the pipeline with `Model`.
   - `Model` column represents the sequencer's model. We will recongize `Illumina HiSeq ...`, `Illumina MiSeq ...`, and `Illumina Genome Analyzer II ...`, because it determines the adapters used in the pipeline with `Platform`. Don't forget that if you have any space in the name of the model. You need to escape them using quoting such as `"Illumina Hiseq 2000"` or back slash. 
   - `LibraryLayout` column represents what's the strategy of RNA-Seq experiment. It can be only `SINGLE` or `PAIRED`.
+  - Currently, the `ABI_SOLID` sequencer is not supported.
 
 ## Test Environment
 - `python -m unittest -f test/test_setup.py`
