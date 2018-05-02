@@ -13,7 +13,10 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
     # create the output folder
     output_prefix = path.join(outdir, name)
     os.mkdir(output_prefix)
-    
+
+    if platform == 'ABI_SOLID':
+        return (False, 'Currently, the colorspace data from ABI_SOLID is not supported')
+
     # decompress the gz file, becasue some of tools don't accerpt .gz compressed files
     if genome.endswith('.gz'):
         new_genome_file_name = path.join(output_prefix, path.basename(genome).rstrip('.gz'))
@@ -26,7 +29,9 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
 
     # convert SRA file to fastq file(s)
     print('Unpacking the SRA file: {} ...'.format(file))
-    subprocess.run(['fastq-dump', '--split-files', '-O', output_prefix, file])
+    f_stdout = open(path.join(output_prefix, sra_file_name + '.fastq-dump.log'), 'w')
+    f_stderr = open(path.join(output_prefix, sra_file_name + '.fastq-dump.errlog'), 'w')
+    subprocess.run(['fastq-dump', '--dumpbase', '--split-files', '-O', output_prefix, file], stdout=f_stdout, stderr=f_stderr)
 
     # Check if the SRA file is correct or not first 
     if layout == 'PAIRED' and (not path.exists(path.join(output_prefix, sra_file_name + '_1.fastq')) or not path.exists(path.join(output_prefix, sra_file_name + '_1.fastq'))):
@@ -38,12 +43,13 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
     fastqc_path = get_fastqc_path()
     trimmomatic_jar_path = get_trimmomatic_jar_path()
     if layout == 'SINGLE':
-        print('QC and trimming ...')
+        print('QC ...')
         f_stdout = open(path.join(output_prefix, sra_file_name + '_1.fastqc.log'), 'w')
         f_stderr = open(path.join(output_prefix, sra_file_name + '_1.fastqc.errlog'), 'w')
         subprocess.run([fastqc_path, '--outdir', output_prefix, path.join(output_prefix, sra_file_name + '_1.fastq')], stdout=f_stdout, stderr=f_stderr)
         with ZipFile(path.join(output_prefix, sra_file_name + '_1_fastqc.zip'), 'r') as zip_ref:
             zip_ref.extractall(output_prefix)
+        print('Trimming ...')
         f_stdout = open(path.join(output_prefix, sra_file_name + '.trimmomatic.log'), 'w')
         f_stderr = open(path.join(output_prefix, sra_file_name + '.trimmomatic.errlog'), 'w')
         if platform == 'ILLUMINA' and (model.startswith('Illumina HiSeq') or model.startswith('Illumina MiSeq')):
@@ -76,7 +82,6 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
                 stderr=f_stderr)
         else: 
             # Use adapter file from BBMap for other platforms and models.
-            # TODO: Another strategy can be used is to guess adapter from FastQC output
             subprocess.run([
                     'java', '-jar', trimmomatic_jar_path,
                     'SE', path.join(output_prefix, sra_file_name + '_1.fastq'),
@@ -93,7 +98,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
         print('Aligning ...')
         f_stdout = open(path.join(output_prefix, sra_file_name + '.hisat2.log'), 'w')
         f_stderr = open(path.join(output_prefix, sra_file_name + '.hisat2.errlog'), 'w')
-        subprocess.run([get_hisat2_command_path('hisat2-build'), genome, path.join(output_prefix, genome_file_name)])
+        subprocess.run([get_hisat2_command_path('hisat2-build'), genome, path.join(output_prefix, genome_file_name)], stdout=f_stdout, stderr=f_stderr)
         subprocess.run([
                 get_hisat2_command_path('hisat2'),
                 '-x', path.join(output_prefix, genome_file_name),
@@ -104,7 +109,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
             stderr=f_stderr
         )
     elif layout == 'PAIRED':
-        print('QC and trimming ...')
+        print('QC ...')
         f_stdout = open(path.join(output_prefix, sra_file_name + '_1.fastqc.log'), 'w')
         f_stderr = open(path.join(output_prefix, sra_file_name + '_1.fastqc.errlog'), 'w')
         subprocess.run([fastqc_path, '--outdir', output_prefix, path.join(output_prefix, sra_file_name + '_1.fastq')], stdout=f_stdout, stderr=f_stderr)
@@ -115,6 +120,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
             zip_ref.extractall(output_prefix)
         with ZipFile(path.join(output_prefix, sra_file_name + '_2_fastqc.zip'), 'r') as zip_ref:
             zip_ref.extractall(output_prefix)
+        print('Trimming ...')
         f_stdout = open(path.join(output_prefix, sra_file_name + '.trimmomatic.log'), 'w')
         f_stderr = open(path.join(output_prefix, sra_file_name + '.trimmomatic.errlog'), 'w')
         if platform == 'ILLUMINA' and (model.startswith('Illumina HiSeq') or model.startswith('Illumina MiSeq')): 
@@ -124,7 +130,9 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
                     path.join(output_prefix, sra_file_name + '_1.fastq'),
                     path.join(output_prefix, sra_file_name + '_2.fastq'),
                     path.join(output_prefix, 'output_1.fastq'),
+                    path.join(output_prefix, 'output_1_un.fastq'),
                     path.join(output_prefix, 'output_2.fastq'),
+                    path.join(output_prefix, 'output_2_un.fastq'),
                     'ILLUMINACLIP:' + get_trimmomatic_adapter_path('TruSeq3-PE.fa') + ':2:30:10',
                     'LEADING:3',
                     'TRAILING:3',
@@ -142,7 +150,9 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
                     path.join(output_prefix, sra_file_name + '_1.fastq'),
                     path.join(output_prefix, sra_file_name + '_2.fastq'),
                     path.join(output_prefix, 'output_1.fastq'),
+                    path.join(output_prefix, 'output_1_un.fastq'),
                     path.join(output_prefix, 'output_2.fastq'),
+                    path.join(output_prefix, 'output_2_un.fastq'),
                     'ILLUMINACLIP:' + get_trimmomatic_adapter_path('TruSeq2-PE.fa') + ':2:30:10',
                     'LEADING:3',
                     'TRAILING:3',
@@ -155,8 +165,8 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
             )
         else:
             # use BBTool (BBMerge) to determine the adapter first, then run the Trimmomatic
-            f_bbmap_stdout = open(path.join(output_prefix, sra_file_name + '_2.bbmap.log'), 'w')
-            f_bbmap_stderr = open(path.join(output_prefix, sra_file_name + '_2.bbmap.errlog'), 'w')
+            f_bbmap_stdout = open(path.join(output_prefix, sra_file_name + '.bbmap.log'), 'w')
+            f_bbmap_stderr = open(path.join(output_prefix, sra_file_name + '.bbmap.errlog'), 'w')
             subprocess.run([
                     get_bbmap_command_path('bbmerge.sh'),
                     'in1=' + path.join(output_prefix, sra_file_name + '_1.fastq'),
@@ -172,7 +182,9 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
                     path.join(output_prefix, sra_file_name + '_1.fastq'),
                     path.join(output_prefix, sra_file_name + '_2.fastq'),
                     path.join(output_prefix, 'output_1.fastq'),
+                    path.join(output_prefix, 'output_1_un.fastq'),
                     path.join(output_prefix, 'output_2.fastq'),
+                    path.join(output_prefix, 'output_2_un.fastq'),
                     'ILLUMINACLIP:' + path.join(output_prefix, 'adapters.fa') + ':2:30:10',
                     'LEADING:3',
                     'TRAILING:3',
@@ -184,7 +196,9 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
                 stderr=f_stderr
             )
         print('Aligning ...')
-        subprocess.run([get_hisat2_command_path('hisat2-build'), genome, path.join(output_prefix, genome_file_name)])
+        f_stdout = open(path.join(output_prefix, sra_file_name + '.hisat2-build.log'), 'w')
+        f_stderr = open(path.join(output_prefix, sra_file_name + '.hisat2-build.errlog'), 'w')
+        subprocess.run([get_hisat2_command_path('hisat2-build'), genome, path.join(output_prefix, genome_file_name)], stdout=f_stdout, stderr=f_stderr)
         f_stdout = open(path.join(output_prefix, sra_file_name + '.hisat2.log'), 'w')
         f_stderr = open(path.join(output_prefix, sra_file_name + '.hisat2.errlog'), 'w')
         subprocess.run([
@@ -218,7 +232,7 @@ def merge_files(files, outdir):  # merge sam files
     f_stderr = open(path.join(outdir, 'out.errlog'), 'w')
     args = ['samtools', 'merge', path.join(outdir, 'output.bam')]
     args.extend(files) 
-    subprocess.run(args)
+    subprocess.run(args, stdout=f_stdout, stderr=f_stderr)
 
 
 if __name__ == '__main__':
