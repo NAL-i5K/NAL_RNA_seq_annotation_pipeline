@@ -284,4 +284,6 @@ if __name__ == '__main__':
     # combine the sam files together and conver to BAM file
     print('Combing the sam files ...')
     merge_files(files_for_merge, path.join(args.outdir, args.name))
+    if args.downsample:
+        pass # TODO: handle the downsample
 
