@@ -20,6 +20,8 @@ A RNA-Seq annotation pipeline based on SRA Toolkit, fastQC, Trimmomatic, HISAT2,
 
 ## Usage
 
+TBD
+
 ## Notes
 
 - The input tsv should have at least four columns, including `Run`, `Platform`, `Model`, and `LibraryLayout` (header must be presented).
@@ -31,5 +33,13 @@ A RNA-Seq annotation pipeline based on SRA Toolkit, fastQC, Trimmomatic, HISAT2,
   - For paired-end layout, `Trimmomatic` will produces four fastq files: forward\_paired, forward\_unpaired, reverse\_paired, reverse\_unpaired, but we will only use the paired data in alignment (by HISAT2)
 
 
-## Test Environment
-- `python -m unittest -f test/test_setup.py`
+## Tests
+
+### Test environment
+
+- `python -m unittest -f tests/test_setup.py`
+
+### Test parser
+
+- `python -m unittest -f tests/test_parser.py`
+
