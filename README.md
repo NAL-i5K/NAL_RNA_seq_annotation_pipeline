@@ -1,6 +1,6 @@
 # NAL RNA-Seq Annotation Pipeline
 
-A RNA-Seq annotation pipeline based on SRA Toolkit, fastQC, Trimmomatic, HISAT2, BBMap, and samtools.
+A RNA-Seq annotation pipeline based on SRA Toolkit, fastQC, Trimmomatic, HISAT2, BBMap, and samtools. It's distributed as a python package.
 
 ## Prerequisite
 
@@ -11,7 +11,7 @@ A RNA-Seq annotation pipeline based on SRA Toolkit, fastQC, Trimmomatic, HISAT2,
 
 ## Installation
 
-- `python setup.py`, this will install a copy of FastQC, Trimmomatic, and HISAT2 in the `rnannot/lib`.
+- `pip install .`, this will install a copy of FastQC, Trimmomatic, and HISAT2 in this python package.
 
 ## Example Usage
 
