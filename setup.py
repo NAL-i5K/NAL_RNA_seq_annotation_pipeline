@@ -32,6 +32,15 @@ urlretrieve(
     'https://downloads.sourceforge.net/project/bbmap/BBMap_38.00.tar.gz',
     join(lib_dir, 'BBMap_38.00.tar.gz'))
 
+print('Downloading Picard ...')
+urlretrieve(
+    'https://github.com/broadinstitute/picard/releases/download/2.18.7/picard.jar',
+    join(lib_dir, 'picard.jar'))
+
+print('Downloading GATK v3 ...')
+urlretrieve('https://software.broadinstitute.org/gatk/download/auth?package=GATK-archive&version=3.8-1-0-gf15c1c3ef',
+    join(lib_dir, 'GenomeAnalysisTK-3.8-1-0-gf15c1c3ef.tar.bz2'))
+
 print('Unpacking fastQC ...')
 with ZipFile(join(lib_dir, 'fastqc_v0.11.7.zip'), 'r') as zip_ref:
     zip_ref.extractall(lib_dir)
@@ -72,10 +81,16 @@ tar = tarfile.open(join(lib_dir, 'BBMap_38.00.tar.gz'), 'r:gz')
 tar.extractall(lib_dir)
 tar.close()
 
+print('Unpacking GATK v3 ...')
+tar = tarfile.open(join(lib_dir, 'GenomeAnalysisTK-3.8-1-0-gf15c1c3ef.tar.bz2'), 'r:bz2')
+tar.extractall(lib_dir)
+tar.close()
+
 print('Cleaning the files ...')
 files = [
     'BBMap_38.00.tar.gz', 'fastqc_v0.11.7.zip',
-    'hisat2-2.1.0-Linux_x86_64.zip', 'Trimmomatic-0.36.zip'
+    'hisat2-2.1.0-Linux_x86_64.zip', 'Trimmomatic-0.36.zip',
+    'GenomeAnalysisTK-3.8-1-0-gf15c1c3ef.tar.bz2'
 ]
 for f in files:
     remove(join(lib_dir, f))
