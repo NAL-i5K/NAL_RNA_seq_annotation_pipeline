@@ -107,6 +107,4 @@ setup(
     keywords='RNA-Seq annotation bioinformatics example',
     url=
     'https://github.com/NAL-i5K/NAL_RNA_seq_annotation_pipeline',  # project home page, if any
-    project_urls={
-        'Source Code': 'https://code.example.com/HelloWorld/',
-    })
+    )
