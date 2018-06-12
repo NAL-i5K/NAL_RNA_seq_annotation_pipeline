@@ -90,7 +90,7 @@ print('Cleaning the files ...')
 files = [
     'BBMap_38.00.tar.gz', 'fastqc_v0.11.7.zip',
     'hisat2-2.1.0-Linux_x86_64.zip', 'Trimmomatic-0.36.zip',
-    'GenomeAnalysisTK-3.8-1-0-gf15c1c3ef.tar.bz2'
+    'GenomeAnalysisTK.tar.bz2'
 ]
 for f in files:
     remove(join(lib_dir, f))
