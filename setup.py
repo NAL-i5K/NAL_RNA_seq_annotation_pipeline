@@ -39,7 +39,7 @@ urlretrieve(
 
 print('Downloading GATK v3 ...')
 urlretrieve('https://software.broadinstitute.org/gatk/download/auth?package=GATK-archive&version=3.8-1-0-gf15c1c3ef',
-    join(lib_dir, 'GenomeAnalysisTK-3.8-1-0-gf15c1c3ef.tar.bz2'))
+    join(lib_dir, 'GenomeAnalysisTK.tar.bz2'))
 
 print('Unpacking fastQC ...')
 with ZipFile(join(lib_dir, 'fastqc_v0.11.7.zip'), 'r') as zip_ref:
@@ -82,7 +82,7 @@ tar.extractall(lib_dir)
 tar.close()
 
 print('Unpacking GATK v3 ...')
-tar = tarfile.open(join(lib_dir, 'GenomeAnalysisTK-3.8-1-0-gf15c1c3ef.tar.bz2'), 'r:bz2')
+tar = tarfile.open(join(lib_dir, 'GenomeAnalysisTK.tar.bz2'), 'r:bz2')
 tar.extractall(lib_dir)
 tar.close()
 
