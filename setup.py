@@ -1,7 +1,7 @@
 from urllib.request import urlretrieve
 from stat import S_IXUSR, S_IXOTH, S_IXGRP, S_IRUSR, S_IROTH, S_IRGRP, S_IWUSR
 from os import mkdir, chmod, remove
-from os.path import dirname, abspath, join, exists
+from os.path import dirname, abspath, join, exists, basename
 from zipfile import ZipFile
 import tarfile
 from setuptools import setup, find_packages
@@ -83,7 +83,10 @@ tar.close()
 
 print('Unpacking GATK v3 ...')
 tar = tarfile.open(join(lib_dir, 'GenomeAnalysisTK.tar.bz2'), 'r:bz2')
-tar.extractall(lib_dir)
+for member in tar.getmembers():
+    if member.isreg():  # skip if the TarInfo is not files
+        member.name = basename(member.name) # remove the path by reset it
+        tar.extract(member, lib_dir) # extract
 tar.close()
 
 print('Cleaning the files ...')
