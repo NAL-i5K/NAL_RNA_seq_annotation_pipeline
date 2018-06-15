@@ -3,7 +3,7 @@ import os
 from os import path
 from rnannot.parser import parse_args
 from sys import argv, exit
-from rnannot.utils import get_trimmomatic_jar_path, get_fastqc_path, get_trimmomatic_adapter_path, get_hisat2_command_path, get_bbmap_command_path, get_bbmap_adapter_path
+from rnannot.utils import get_trimmomatic_jar_path, get_fastqc_path, get_trimmomatic_adapter_path, get_hisat2_command_path, get_bbmap_command_path, get_bbmap_adapter_path, get_gatk_jar_path
 import subprocess
 from zipfile import ZipFile
 import gzip
@@ -236,6 +236,13 @@ def merge_files(files, outdir):  # merge sam files
     subprocess.run(args, stdout=f_stdout, stderr=f_stderr)
 
 
+def check_ref_files(ref_path):
+    if path.exists(ref_path + '.fai') and path.exists('.dict'):
+        return True
+    else:
+        return False
+
+
 if __name__ == '__main__':
     # parse the arguments, exclude the script name
     args = parse_args(argv[1:])
@@ -284,6 +291,10 @@ if __name__ == '__main__':
     # combine the sam files together and convert to BAM file
     print('Combing the sam files ...')
     merge_files(files_for_merge, path.join(args.outdir, args.name))
+    # handle the downsample
     if args.downsample:
-        pass # TODO: handle the downsample
-
+        if not check_ref_files(args.genome):
+            # create the picard dict and samtools index
+            subprocess.run(['java', '-jar', get_picard_jar_path(), 'CreateSequenceDictionary', 'R=' + args.genome, 'O=' + args.genome + '.dict' ])
+            subprocess.run(['samtools', 'faidx', args.genome])
+        subprocess.run(['java', '-jar', get_gatk_jar_path(), '-T', 'PrintReads', '-R', args.genome, '-I', path.join(args.outdir, args.name, 'output.bam'), '-o', path.join(args.outdir, args.name, 'output.reduce.bam'), '-dcov', '1', '-U', 'ALLOW_N_CIGAR_READS'])
