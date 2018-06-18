@@ -11,7 +11,7 @@ A RNA-Seq annotation pipeline based on SRA Toolkit, fastQC, Trimmomatic, HISAT2,
 
 ## Installation
 
-- `python setup.py install --user`, this will install a copy of FastQC, Trimmomatic, HISAT2, GATK3, and picard in this python package.
+- `python setup.py install`, this will install a copy of FastQC, Trimmomatic, HISAT2, GATK3, and picard in this python package. You may need to add `--user` in arguments.
 
 ## Examples
 
