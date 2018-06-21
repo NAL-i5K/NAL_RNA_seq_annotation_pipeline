@@ -255,6 +255,14 @@ if __name__ == '__main__':
     if not path.isabs(args.genome):
         args.genome = path.abspath(args.genome)
 
+    os.mkdir(path.join(args.outdir, args.name))
+    if args.genome.endswith('.gz'):
+        new_genome_file_name = path.join(args.outdir, args.name, path.basename(args.genome).rstrip('.gz'))
+        with gzip.open(args.genome, 'rb') as f_in:
+            with open(new_genome_file_name, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+        args.genome =  new_genome_file_name
+
     with open(args.input) as f:
         col_names = f.readline().rstrip('\n').split('\t')
         run_ind = col_names.index('Run')
@@ -276,7 +284,6 @@ if __name__ == '__main__':
             platforms.append(temp[platform_ind])
             models.append(temp[model_ind])
             layouts.append(temp[layout_ind])
-    os.mkdir(path.join(args.outdir, args.name))
     files_for_merge = []
     for run, platform, model, layout in zip(runs, platforms, models, layouts):
         print('Processing the file: {}'.format(run))
