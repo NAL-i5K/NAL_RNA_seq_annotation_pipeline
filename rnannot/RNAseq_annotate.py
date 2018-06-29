@@ -33,11 +33,12 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
     f_stdout = open(path.join(output_prefix, sra_file_name + '.fastq-dump.log'), 'w')
     f_stderr = open(path.join(output_prefix, sra_file_name + '.fastq-dump.errlog'), 'w')
     subprocess.run(['fastq-dump', '--dumpbase', '--split-files', '-O', output_prefix, file], stdout=f_stdout, stderr=f_stderr)
-
-    # Check if the SRA file is correct or not first 
+    f_stdout.close()
+    f_stderr.close()
+    # Check if the SRA file is correct or not first
     if layout == 'PAIRED' and (not path.exists(path.join(output_prefix, sra_file_name + '_1.fastq')) or not path.exists(path.join(output_prefix, sra_file_name + '_1.fastq'))):
         return (False, "run {} doesn't have paired data. It's not processed.".format(run))
-    
+
     # Run FastQC first
     # Then, use Trimmomatic to do trimming
     # In the last step, perfom the alignment using HISAT2
@@ -50,6 +51,8 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
         subprocess.run([fastqc_path, '--outdir', output_prefix, path.join(output_prefix, sra_file_name + '_1.fastq')], stdout=f_stdout, stderr=f_stderr)
         with ZipFile(path.join(output_prefix, sra_file_name + '_1_fastqc.zip'), 'r') as zip_ref:
             zip_ref.extractall(output_prefix)
+        f_stdout.close()
+        f_stderr.close()
         print('Trimming ...')
         f_stdout = open(path.join(output_prefix, sra_file_name + '.trimmomatic.log'), 'w')
         f_stderr = open(path.join(output_prefix, sra_file_name + '.trimmomatic.errlog'), 'w')
@@ -81,7 +84,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
                 ],
                 stdout=f_stdout,
                 stderr=f_stderr)
-        else: 
+        else:
             # Use adapter file from BBMap for other platforms and models.
             subprocess.run([
                     'java', '-jar', trimmomatic_jar_path,
@@ -96,6 +99,8 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
                 ],
                 stdout=f_stdout,
                 stderr=f_stderr)
+        f_stdout.close()
+        f_stderr.close()
         print('Aligning ...')
         f_stdout = open(path.join(output_prefix, sra_file_name + '.hisat2.log'), 'w')
         f_stderr = open(path.join(output_prefix, sra_file_name + '.hisat2.errlog'), 'w')
@@ -109,11 +114,15 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
             stdout=f_stdout,
             stderr=f_stderr
         )
+        f_stdout.close()
+        f_stderr.close()
     elif layout == 'PAIRED':
         print('QC ...')
         f_stdout = open(path.join(output_prefix, sra_file_name + '_1.fastqc.log'), 'w')
         f_stderr = open(path.join(output_prefix, sra_file_name + '_1.fastqc.errlog'), 'w')
         subprocess.run([fastqc_path, '--outdir', output_prefix, path.join(output_prefix, sra_file_name + '_1.fastq')], stdout=f_stdout, stderr=f_stderr)
+        f_stdout.close()
+        f_stderr.close()
         f_stdout = open(path.join(output_prefix, sra_file_name + '_2.fastqc.log'), 'w')
         f_stderr = open(path.join(output_prefix, sra_file_name + '_2.fastqc.errlog'), 'w')
         subprocess.run([fastqc_path, '--outdir', output_prefix, path.join(output_prefix, sra_file_name + '_2.fastq')], stdout=f_stdout, stderr=f_stderr)
@@ -177,6 +186,8 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
                 stdout=f_bbmap_stdout,
                 stderr=f_bbmap_stderr
             )
+            f_bbmap_stdout.close()
+            f_bbmap_stderr.close()
             subprocess.run([
                     'java', '-jar', trimmomatic_jar_path,
                     'PE',
@@ -196,10 +207,14 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
                 stdout=f_stdout,
                 stderr=f_stderr
             )
+        f_stdout.close()
+        f_stderr.close()
         print('Aligning ...')
         f_stdout = open(path.join(output_prefix, sra_file_name + '.hisat2-build.log'), 'w')
         f_stderr = open(path.join(output_prefix, sra_file_name + '.hisat2-build.errlog'), 'w')
         subprocess.run([get_hisat2_command_path('hisat2-build'), genome, path.join(output_prefix, genome_file_name)], stdout=f_stdout, stderr=f_stderr)
+        f_stdout.close()
+        f_stderr.close()
         f_stdout = open(path.join(output_prefix, sra_file_name + '.hisat2.log'), 'w')
         f_stderr = open(path.join(output_prefix, sra_file_name + '.hisat2.errlog'), 'w')
         subprocess.run([
@@ -212,6 +227,8 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
             stdout=f_stdout,
             stderr=f_stderr
         )
+        f_stdout.close()
+        f_stderr.close()
     # sort and convert to the bam file
     f_stdout = open(path.join(output_prefix, sra_file_name + '.samtools.log'), 'w')
     f_stderr = open(path.join(output_prefix, sra_file_name + '.samtools.errlog'), 'w')
@@ -225,6 +242,8 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
         stdout=f_stdout,
         stderr=f_stderr
     )
+    f_stdout.close()
+    f_stderr.close()
     return (True, '')
 
 
@@ -261,7 +280,7 @@ if __name__ == '__main__':
         with gzip.open(args.genome, 'rb') as f_in:
             with open(new_genome_file_name, 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)
-        args.genome =  new_genome_file_name
+        args.genome = new_genome_file_name
 
     with open(args.input) as f:
         col_names = f.readline().rstrip('\n').split('\t')
@@ -302,6 +321,15 @@ if __name__ == '__main__':
     if args.downsample:
         if not check_ref_files(args.genome):
             # create the picard dict and samtools index
-            subprocess.run(['java', '-jar', get_picard_jar_path(), 'CreateSequenceDictionary', 'R=' + args.genome, 'O=' + args.genome + '.dict' ])
+            subprocess.run(['java', '-jar', get_picard_jar_path(), 'CreateSequenceDictionary', 'R=' + args.genome, 'O=' + args.genome + '.dict'])
             subprocess.run(['samtools', 'faidx', args.genome])
-        subprocess.run(['java', '-jar', get_gatk_jar_path(), '-T', 'PrintReads', '-R', args.genome, '-I', path.join(args.outdir, args.name, 'output.bam'), '-o', path.join(args.outdir, args.name, 'output.reduce.bam'), '-dcov', '1', '-U', 'ALLOW_N_CIGAR_READS'])
+        f_stdout = open(path.join(args.outdir, args.name, 'reduce_coverage.log'), 'w')
+        f_stderr = open(path.join(args.outdir, args.name, 'reduce_coverage.errlog'), 'w')
+        subprocess.run([
+                'java', '-jar', get_gatk_jar_path(), '-T', 'PrintReads',
+                '-R', args.genome, '-I', path.join(args.outdir, args.name, 'output.bam'),
+                '-o', path.join(args.outdir, args.name, 'output.reduce.bam'),
+                '-dcov', '1', '-U', 'ALLOW_N_CIGAR_READS'
+            ],
+            stdout=f_stdout,
+            stderr=f_stderr)
