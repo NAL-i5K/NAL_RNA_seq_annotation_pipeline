@@ -18,7 +18,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
     if platform == 'ABI_SOLID':
         return (False, 'Currently, the colorspace data from ABI_SOLID is not supported')
 
-    # decompress the gz file, becasue some of tools don't accerpt .gz compressed files
+    # decompress the gz file, becasue some of tools don't accept .gz compressed files
     if genome.endswith('.gz'):
         new_genome_file_name = path.join(output_prefix, path.basename(genome).rstrip('.gz'))
         with gzip.open(genome, 'rb') as f_in:
@@ -281,7 +281,7 @@ if __name__ == '__main__':
             files_for_merge.append(path.join(args.outdir, args.name, run_file_name, 'output.bam'))
         else:
             print(err_message)
-    # combine the sam files together and conver to BAM file
+    # combine the sam files together and convert to BAM file
     print('Combing the sam files ...')
     merge_files(files_for_merge, path.join(args.outdir, args.name))
     if args.downsample:
