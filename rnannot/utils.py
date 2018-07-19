@@ -5,7 +5,7 @@ def get_lib_path():
 
 
 def get_trimmomatic_jar_path():
-    return path.join(get_lib_path(), 'Trimmomatic-0.36', 'trimmomatic-0.36.jar')
+    return path.join(get_lib_path(), 'Trimmomatic-0.38', 'trimmomatic-0.38.jar')
 
 
 def get_fastqc_path():
@@ -13,7 +13,7 @@ def get_fastqc_path():
 
 
 def get_trimmomatic_adapter_path(file_name):
-    return path.join(get_lib_path(), 'Trimmomatic-0.36', 'adapters', file_name)
+    return path.join(get_lib_path(), 'Trimmomatic-0.38', 'adapters', file_name)
 
 
 def get_bbmap_adapter_path():

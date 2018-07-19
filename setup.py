@@ -19,8 +19,8 @@ urlretrieve(
 
 print('Downloading Trimmomatic ...')
 urlretrieve(
-    'http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/Trimmomatic-0.36.zip',
-    join(lib_dir, 'Trimmomatic-0.36.zip'))
+    'http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/Trimmomatic-0.38.zip',
+    join(lib_dir, 'Trimmomatic-0.38.zip'))
 
 print('Downloading HISAT2 ...')
 urlretrieve(
@@ -50,7 +50,7 @@ chmod(
     S_IXUSR | S_IXOTH | S_IXGRP | S_IRUSR | S_IROTH | S_IRGRP | S_IWUSR)
 
 print('Unpacking Trimmomatic ...')
-with ZipFile(join(lib_dir, 'Trimmomatic-0.36.zip'), 'r') as zip_ref:
+with ZipFile(join(lib_dir, 'Trimmomatic-0.38.zip'), 'r') as zip_ref:
     zip_ref.extractall(lib_dir)
 
 print('Unpacking HISAT2 ...')
@@ -92,7 +92,7 @@ tar.close()
 print('Cleaning the files ...')
 files = [
     'BBMap_38.00.tar.gz', 'fastqc_v0.11.7.zip',
-    'hisat2-2.1.0-Linux_x86_64.zip', 'Trimmomatic-0.36.zip',
+    'hisat2-2.1.0-Linux_x86_64.zip', 'Trimmomatic-0.38.zip',
     'GenomeAnalysisTK.tar.bz2'
 ]
 for f in files:
