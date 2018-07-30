@@ -101,7 +101,7 @@ for f in files:
 setup(
     name='rnannot',
     version='0.0.1',
-    packages=find_packages(),
+    packages=find_packages('.'),
     scripts=['rnannot/RNAseq_annotate.py'],
     include_package_data=True,
     author='Yi Hsiao',
