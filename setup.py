@@ -1,7 +1,7 @@
 from urllib.request import urlretrieve
 from stat import S_IXUSR, S_IXOTH, S_IXGRP, S_IRUSR, S_IROTH, S_IRGRP, S_IWUSR
 from os import mkdir, chmod, remove
-from os.path import dirname, abspath, join, exists
+from os.path import dirname, abspath, join, exists, basename
 from zipfile import ZipFile
 import tarfile
 from setuptools import setup, find_packages
@@ -19,8 +19,8 @@ urlretrieve(
 
 print('Downloading Trimmomatic ...')
 urlretrieve(
-    'http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/Trimmomatic-0.36.zip',
-    join(lib_dir, 'Trimmomatic-0.36.zip'))
+    'http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/Trimmomatic-0.38.zip',
+    join(lib_dir, 'Trimmomatic-0.38.zip'))
 
 print('Downloading HISAT2 ...')
 urlretrieve(
@@ -32,6 +32,15 @@ urlretrieve(
     'https://downloads.sourceforge.net/project/bbmap/BBMap_38.00.tar.gz',
     join(lib_dir, 'BBMap_38.00.tar.gz'))
 
+print('Downloading Picard ...')
+urlretrieve(
+    'https://github.com/broadinstitute/picard/releases/download/2.18.7/picard.jar',
+    join(lib_dir, 'picard.jar'))
+
+print('Downloading GATK v3 ...')
+urlretrieve('https://software.broadinstitute.org/gatk/download/auth?package=GATK-archive&version=3.8-1-0-gf15c1c3ef',
+    join(lib_dir, 'GenomeAnalysisTK.tar.bz2'))
+
 print('Unpacking fastQC ...')
 with ZipFile(join(lib_dir, 'fastqc_v0.11.7.zip'), 'r') as zip_ref:
     zip_ref.extractall(lib_dir)
@@ -41,7 +50,7 @@ chmod(
     S_IXUSR | S_IXOTH | S_IXGRP | S_IRUSR | S_IROTH | S_IRGRP | S_IWUSR)
 
 print('Unpacking Trimmomatic ...')
-with ZipFile(join(lib_dir, 'Trimmomatic-0.36.zip'), 'r') as zip_ref:
+with ZipFile(join(lib_dir, 'Trimmomatic-0.38.zip'), 'r') as zip_ref:
     zip_ref.extractall(lib_dir)
 
 print('Unpacking HISAT2 ...')
@@ -72,10 +81,19 @@ tar = tarfile.open(join(lib_dir, 'BBMap_38.00.tar.gz'), 'r:gz')
 tar.extractall(lib_dir)
 tar.close()
 
+print('Unpacking GATK v3 ...')
+tar = tarfile.open(join(lib_dir, 'GenomeAnalysisTK.tar.bz2'), 'r:bz2')
+for member in tar.getmembers():
+    if member.isreg():  # skip if the TarInfo is not files
+        member.name = basename(member.name) # remove the path by reset it
+        tar.extract(member, lib_dir) # extract
+tar.close()
+
 print('Cleaning the files ...')
 files = [
     'BBMap_38.00.tar.gz', 'fastqc_v0.11.7.zip',
-    'hisat2-2.1.0-Linux_x86_64.zip', 'Trimmomatic-0.36.zip'
+    'hisat2-2.1.0-Linux_x86_64.zip', 'Trimmomatic-0.38.zip',
+    'GenomeAnalysisTK.tar.bz2'
 ]
 for f in files:
     remove(join(lib_dir, f))
@@ -83,7 +101,7 @@ for f in files:
 setup(
     name='rnannot',
     version='0.0.1',
-    packages=find_packages(),
+    packages=find_packages('.'),
     scripts=['rnannot/RNAseq_annotate.py'],
     include_package_data=True,
     author='Yi Hsiao',
@@ -92,6 +110,4 @@ setup(
     keywords='RNA-Seq annotation bioinformatics example',
     url=
     'https://github.com/NAL-i5K/NAL_RNA_seq_annotation_pipeline',  # project home page, if any
-    project_urls={
-        'Source Code': 'https://code.example.com/HelloWorld/',
-    })
+    )
