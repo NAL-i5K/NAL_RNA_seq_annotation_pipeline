@@ -15,8 +15,8 @@ A RNA-Seq annotation pipeline based on SRA Toolkit, fastQC, Trimmomatic, HISAT2,
 
 ## Examples
 
-- `python3 ./rnannot/RNAseq_annotate.py -i ./example/197043.tsv -g ../GCA_000696855.1_Hvit_1.0_genomic.fna.gz`
-- `python3 ./rnannot/RNAseq_annotate.py -i ./example/104688.tsv -g ../104688_ref_gapfilled_joined_lt9474.gt500.covgt10_chrMT_and_UN_refseq_IDs.fa.gz`
+- `RNAseq_annotate.py -i ./example/197043.tsv -g ../GCA_000696855.1_Hvit_1.0_genomic.fna.gz`
+- `RNAseq_annotate.py -i ./example/104688.tsv -g ../104688_ref_gapfilled_joined_lt9474.gt500.covgt10_chrMT_and_UN_refseq_IDs.fa.gz`
 
 ## Usage
 
