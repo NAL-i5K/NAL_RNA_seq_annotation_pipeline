@@ -342,7 +342,7 @@ def read_sam_errors(file_path):
             elif 'WARNING' in temp:
                 warns.add(temp.lstrip('WARNING:'))
             elif temp == '\n':
-               break
+                break
     return (errors, warns)
 
 
