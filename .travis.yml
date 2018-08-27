@@ -1,0 +1,13 @@
+os: linux
+language: ruby
+rvm: 2.2
+
+matrix:
+  allow_failures:
+   - rvm: 2.2
+
+before_script:
+  - gem install awesome_bot
+
+script:
+  - awesome_bot --allow-redirect --allow-dupe README.md
