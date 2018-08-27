@@ -13,14 +13,35 @@ A RNA-Seq annotation pipeline based on SRA Toolkit, fastQC, Trimmomatic, HISAT2,
 
 - `python setup.py install`. It will install a copy of FastQC, Trimmomatic, HISAT2, GATK3, and picard in this python package. You may need to add `--user` in arguments.
 
-## Examples
-
-- `RNAseq_annotate.py -i ./example/197043.tsv -g ../GCA_000696855.1_Hvit_1.0_genomic.fna.gz`
-- `RNAseq_annotate.py -i ./example/104688.tsv -g ../104688_ref_gapfilled_joined_lt9474.gt500.covgt10_chrMT_and_UN_refseq_IDs.fa.gz`
-
 ## Usage
 
-TBD
+``` shell
+RNAseq_annotate.py [-h] [-i INPUT] [-g GENOME] [-n [NAME]]
+                          [-o [OUTDIR]] [-d]
+
+Easy to use pipeline built for large-scale RNA-seq mapping with a genome
+assembly
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i INPUT, --input INPUT
+                        A tsv file with a list of SRA runs' information.
+  -g GENOME, --genome GENOME
+                        A fasta file to align with.
+  -n [NAME], --name [NAME]
+                        name of the output folder, if not specified, use the
+                        time of start
+  -o [OUTDIR], --outdir [OUTDIR]
+                        directory of output folder at, if not specified, use
+                        current folder
+  -d, --downsample      if specified, a downsampled bam file will be
+                        downsampled
+```
+
+## Example
+
+- `wget https://i5k.nal.usda.gov/data/Arthropoda/ephdan-(Ephemera_danica)/Current%20Genome%20Assembly/1.Genome%20Assembly/BCM-After-Atlas/Scaffolds/Edan07162013.scaffolds.fa.gz`
+- `RNAseq_annotate.py -i ./example/1049336.tsv -g ./Edan07162013.scaffolds.fa.gz -d`
 
 ## Notes
 
