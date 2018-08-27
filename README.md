@@ -1,5 +1,7 @@
 # NAL RNA-Seq Annotation Pipeline
 
+[![Build Status](https://travis-ci.org/NAL-i5K/NAL_RNA_seq_annotation_pipeline.svg?branch=master)](https://travis-ci.org/NAL-i5K/NAL_RNA_seq_annotation_pipeline)
+
 A RNA-Seq annotation pipeline based on [SRA Toolkit](https://github.com/ncbi/sra-tools), [fastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/), [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic), [HISAT2](https://github.com/infphilo/hisat2), [BBMap](https://sourceforge.net/projects/bbmap/), [picard](https://broadinstitute.github.io/picard/), [GATK3](https://github.com/broadgsa/gatk-protected), and [samtools](https://github.com/samtools/samtools). It's distributed as a python package.
 
 ## Prerequisite
