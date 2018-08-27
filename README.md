@@ -1,10 +1,10 @@
 # NAL RNA-Seq Annotation Pipeline
 
-A RNA-Seq annotation pipeline based on SRA Toolkit, fastQC, Trimmomatic, HISAT2, BBMap, picard, GATK3, and samtools. It's distributed as a python package.
+A RNA-Seq annotation pipeline based on [SRA Toolkit](https://github.com/ncbi/sra-tools), [fastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/), [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic), [HISAT2](https://github.com/infphilo/hisat2), [BBMap](https://sourceforge.net/projects/bbmap/), [picard](https://broadinstitute.github.io/picard/), [GATK3](https://github.com/broadgsa/gatk-protected), and [samtools](https://github.com/samtools/samtools). It's distributed as a python package.
 
 ## Prerequisite
 
-- Python 3.5
+- At least Python 3.5
 - Java
 - [SRA Toolkit](https://github.com/ncbi/sra-tools)
 - [samtools](https://github.com/samtools/samtools)
@@ -63,4 +63,3 @@ optional arguments:
 ### Test parser
 
 - `python -m unittest -f tests/test_parser.py`
-
