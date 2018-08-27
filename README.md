@@ -1,6 +1,6 @@
 # NAL RNA-Seq Annotation Pipeline
 
-A RNA-Seq annotation pipeline based on SRA Toolkit, fastQC, Trimmomatic, HISAT2, BBMap, and samtools. It's distributed as a python package.
+A RNA-Seq annotation pipeline based on SRA Toolkit, fastQC, Trimmomatic, HISAT2, BBMap, picard, GATK3, and samtools. It's distributed as a python package.
 
 ## Prerequisite
 
@@ -11,7 +11,7 @@ A RNA-Seq annotation pipeline based on SRA Toolkit, fastQC, Trimmomatic, HISAT2,
 
 ## Installation
 
-- `python setup.py install`, this will install a copy of FastQC, Trimmomatic, HISAT2, GATK3, and picard in this python package. You may need to add `--user` in arguments.
+- `python setup.py install`. It will install a copy of FastQC, Trimmomatic, HISAT2, GATK3, and picard in this python package. You may need to add `--user` in arguments.
 
 ## Examples
 
@@ -31,7 +31,7 @@ TBD
   - `LibraryLayout` column represents what's the strategy of RNA-Seq experiment. It can be only `SINGLE` or `PAIRED`.
   - Currently, the `ABI_SOLID` sequencer is not supported.
   - For paired-end layout, `Trimmomatic` will produces four fastq files: forward\_paired, forward\_unpaired, reverse\_paired, reverse\_unpaired, but we will only use the paired data in alignment (by HISAT2)
-
+- When using on server, make sure you use the `JAVA_TOOL_OPTIONS` environment to set the maximum memory usage like `export JAVA_TOOL_OPTIONS="-Xmx2g"` when running the toolkit. You can also check an example [here](example/example_script.sh).
 
 ## Tests
 
