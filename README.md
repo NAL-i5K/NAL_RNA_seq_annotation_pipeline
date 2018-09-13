@@ -1,4 +1,4 @@
-# NAL RNA-Seq Annotation Pipeline
+# NAL RNA-Seq Annotation Pipeline (Under Development)
 
 [![Build Status](https://travis-ci.org/NAL-i5K/NAL_RNA_seq_annotation_pipeline.svg?branch=master)](https://travis-ci.org/NAL-i5K/NAL_RNA_seq_annotation_pipeline)
 
