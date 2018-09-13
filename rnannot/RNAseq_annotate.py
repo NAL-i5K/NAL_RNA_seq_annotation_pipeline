@@ -471,7 +471,7 @@ if __name__ == '__main__':
             [
                 'java', '-jar',
                 get_picard_jar_path(), 'BuildBamIndex',
-                'I=output.bam'
+                'I=' + path.join(args.outdir, args.name, 'output.bam')
             ],
             stdout=f_stdout,
             stderr=f_stderr)
