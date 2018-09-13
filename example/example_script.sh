@@ -33,4 +33,4 @@ cd /project/nal_genomics/leo/NAL_RNA_seq_annotation_pipeline
 
 
 ulimit -s unlimited # https://3.basecamp.com/3625179/buckets/5538276/messages/1243658335
-RNAseq_annotate.py -i ./example/1049336.tsv -g ../Edan07162013.scaffolds.fa.gz -d
+RNAseq_annotate.py -i ./example/1049336.tsv -g ./Edan07162013.scaffolds.fa.gz -d
