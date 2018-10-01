@@ -9,9 +9,10 @@ from zipfile import ZipFile
 import gzip
 import shutil
 from itertools import islice
+from six.moves import urllib
 
 
-def run_pipeline(file, genome, outdir, name, layout, platform, model):
+def run_pipeline(file, genome, outdir, name, layout, platform, model, download_link):
     # create the output folder
     output_prefix = path.join(outdir, name)
     os.mkdir(output_prefix)
@@ -31,6 +32,10 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model):
         genome = new_genome_file_name
     sra_file_name = path.basename(file)
     genome_file_name = path.basename(genome)
+
+    # check if SRA file exist or download it first
+    if not path.exists(file):
+        urllib.request.urlretrieve(download_link, file)
 
     # convert SRA file to fastq file(s)
     print('Unpacking the SRA file: {} ...'.format(file))
@@ -374,9 +379,10 @@ if __name__ == '__main__':
         platform_ind = col_names.index('Platform')
         model_ind = col_names.index('Model')
         layout_ind = col_names.index('LibraryLayout')
+        download_ind = col_names.index('download_path')
         print('Checking the input tsv file: {}'.format(args.input))
-        for ind, name in zip([run_ind, platform_ind, model_ind, layout_ind],
-                             ['Run', 'Platform', 'Model', 'LibraryLayout']):
+        for ind, name in zip([run_ind, platform_ind, model_ind, layout_ind, download_ind],
+                             ['Run', 'Platform', 'Model', 'LibraryLayout', 'download_path']):
             if ind == -1:
                 print('{} column is missing in input tsv file.'.format(name))
                 exit(1)
@@ -384,14 +390,16 @@ if __name__ == '__main__':
         platforms = []
         models = []
         layouts = []
+        download_links = []
         for line in f:
             temp = line.rstrip('\n').split('\t')
             runs.append(temp[run_ind])
             platforms.append(temp[platform_ind])
             models.append(temp[model_ind])
             layouts.append(temp[layout_ind])
+            download_links.append(temp[download_ind])
     files_for_merge = []
-    for run, platform, model, layout in zip(runs, platforms, models, layouts):
+    for run, platform, model, layout, download_link in zip(runs, platforms, models, layouts, download_links):
         print('Processing the file: {}'.format(run))
         if not path.isabs(run):
             run = path.abspath(run)
@@ -403,7 +411,9 @@ if __name__ == '__main__':
             name=run_file_name,
             layout=layout,
             platform=platform,
-            model=model)
+            model=model,
+            download_link=download_link
+            )
         if return_status:
             files_for_merge.append(
                 path.join(args.outdir, args.name, run_file_name, 'output.bam'))
