@@ -103,7 +103,7 @@ setup(
     version='0.0.1',
     install_requires=['six'],
     packages=find_packages('.'),
-    scripts=['rnannot/RNAseq_annotate.py'],
+    scripts=['rnannot/RNAseq_annotate.py','rnannot/download_sra_metadata.py'],
     include_package_data=True,
     author='Yi Hsiao',
     author_email='hsiaoyi0504@gmail.com',
