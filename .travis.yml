@@ -1,13 +1,19 @@
 os: linux
-language: ruby
-rvm: 2.2
 
 matrix:
+  include:
+  - language: ruby
+    rvm: 2.2
+    before_script:
+    - gem install awesome_bot
+    script:
+    - awesome_bot --allow-redirect --allow-dupe README.md
+  - language: python
+    python: 3.5
+    before_script:
+    - python setup.py install
+    script:
+    - pip list
   allow_failures:
    - rvm: 2.2
 
-before_script:
-  - gem install awesome_bot
-
-script:
-  - awesome_bot --allow-redirect --allow-dupe README.md
