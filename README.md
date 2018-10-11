@@ -15,6 +15,10 @@ A RNA-Seq annotation pipeline based on [SRA Toolkit](https://github.com/ncbi/sra
 
 - `python setup.py install`. It will install a copy of FastQC, Trimmomatic, HISAT2, GATK3, and picard in this python package. You may need to add `--user` in arguments.
 
+## Uninstallation
+
+- `pip uninstall rnannot`
+
 ## Usage
 
 ``` shell
