@@ -22,6 +22,16 @@ A RNA-Seq annotation pipeline based on [SRA Toolkit](https://github.com/ncbi/sra
 ## Usage
 
 ``` shell
+
+download_sra_metadata.py [-t TAXID] [-o [OUTPUT]]
+
+Use pipeline to download the sra metadata,the output file will be used for the input file of RNAseq_annotate.py.
+
+optional arguments:
+  -t TAXID, --taxid TAXID    find all RNA SRA files for a given taxid
+  -o [OUTPUT], --output [OUTOUT] directory and name of output folder at, if not specified, use current folder
+
+
 RNAseq_annotate.py [-h] [-i INPUT] [-g GENOME] [-n [NAME]]
                           [-o [OUTDIR]] [-d]
 
@@ -45,7 +55,7 @@ optional arguments:
 ```
 
 ## Example
-
+- `download_sra_metadata.py -t 1049336 -o 1049336.tsv`
 - `wget "https://i5k.nal.usda.gov/data/Arthropoda/ephdan-(Ephemera_danica)/Current%20Genome%20Assembly/1.Genome%20Assembly/BCM-After-Atlas/Scaffolds/Edan07162013.scaffolds.fa.gz"`
 - `RNAseq_annotate.py -i ./example/1049336.tsv -g ./Edan07162013.scaffolds.fa.gz -d`
 
