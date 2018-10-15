@@ -51,13 +51,14 @@ optional arguments:
 
 ## Notes
 
-- The input tsv should have at least four columns, including `Run`, `Platform`, `Model`, and `LibraryLayout` (header must be presented).
+- The input tsv should have at least five columns, including `Run`, `Platform`, `Model`, `LibraryLayout` (header must be presented), and `download_path`.
   - `Run` column represents the paths to the SRA files. You can use either relative path to your current directory or absolute path. To make less confusion, we recommned to use absolute path.
   - `Platform` column represents the sequencer's brand. We will recognize `ILLUMINA` and `ABI_SOLID` (although we will not process `ABI_SOLID`) in this field, because it determines the adapters used in the pipeline with `Model`.
   - `Model` column represents the sequencer's model. We will recongize `Illumina HiSeq ...`, `Illumina MiSeq ...`, and `Illumina Genome Analyzer II ...`, because it determines the adapters used in the pipeline with `Platform`. Don't forget that if you have any space in the name of the model. You need to escape them using quoting such as `"Illumina Hiseq 2000"` or back slash. 
   - `LibraryLayout` column represents what's the strategy of RNA-Seq experiment. It can be only `SINGLE` or `PAIRED`.
-  - Currently, the `ABI_SOLID` sequencer is not supported.
-  - For paired-end layout, `Trimmomatic` will produces four fastq files: forward\_paired, forward\_unpaired, reverse\_paired, reverse\_unpaired, but we will only use the paired data in alignment (by HISAT2)
+    - Currently, the `ABI_SOLID` sequencer is not supported.
+    - For paired-end layout, `Trimmomatic` will produces four fastq files: forward\_paired, forward\_unpaired, reverse\_paired, reverse\_unpaired, but we will only use the paired data in alignment (by HISAT2)
+  - `download_path` column represents where we can download the SRA files.
 - When using on server, make sure you use the `JAVA_TOOL_OPTIONS` environment to set the maximum memory usage like `export JAVA_TOOL_OPTIONS="-Xmx2g"` when running the toolkit. You can also check an example [here](example/example_script.sh).
 
 ## Tests
