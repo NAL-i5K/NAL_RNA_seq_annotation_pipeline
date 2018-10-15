@@ -21,17 +21,21 @@ A RNA-Seq annotation pipeline based on [SRA Toolkit](https://github.com/ncbi/sra
 
 ## Usage
 
-``` shell
+- **download_sra_metadata.py**
 
+``` shell
 download_sra_metadata.py [-t TAXID] [-o [OUTPUT]]
 
 Use pipeline to download the sra metadata,the output file will be used for the input file of RNAseq_annotate.py.
 
 optional arguments:
   -t TAXID, --taxid TAXID    find all RNA SRA files for a given taxid
-  -o [OUTPUT], --output [OUTOUT] directory and name of output folder at, if not specified, use current folder
+  -o [OUTPUT], --output [OUTOUT] output file name, if not specified, will generate output tsv file in current folder with name [tax_id].tsv
+```
 
+- **RNAseq_annotate.py**
 
+``` shell
 RNAseq_annotate.py [-h] [-i INPUT] [-g GENOME] [-n [NAME]]
                           [-o [OUTDIR]] [-d]
 
