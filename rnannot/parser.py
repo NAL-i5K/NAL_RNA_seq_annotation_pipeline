@@ -13,5 +13,7 @@ def parse_args(argv):
     parser.add_argument('-o', '--outdir', dest='outdir', nargs='?', default='.',
                         help='directory of output folder at, if not specified, use current folder')
     parser.add_argument('-d', '--downsample', dest='downsample', default=False,action='store_true', help='if specified, a downsampled bam file will be downsampled')
+    if len(argv) == 0:
+        parser.print_help(sys.stderr)
     args = parser.parse_args(argv)
     return args
