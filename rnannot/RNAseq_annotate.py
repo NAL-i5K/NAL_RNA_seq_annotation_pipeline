@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 import os
 from os import path
-from rnannot.parser import parse_args
 from sys import argv, exit
 from rnannot.utils import get_trimmomatic_jar_path, get_fastqc_path, get_trimmomatic_adapter_path, get_hisat2_command_path, get_bbmap_command_path, get_bbmap_adapter_path, get_gatk_jar_path, get_picard_jar_path
+import rnannot.parser import parse_args
 import subprocess
 from zipfile import ZipFile
 import gzip
 import shutil
 from itertools import islice
 from six.moves import urllib
-
+import argparse
+import datetime
+import sys
 
 def run_pipeline(file, genome, outdir, name, layout, platform, model, download_link):
     # create the output folder
@@ -35,6 +37,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
 
     # check if SRA file exist or download it first
     if not path.exists(file):
+        print('downloading sra files...')
         urllib.request.urlretrieve(download_link, file)
 
     # convert SRA file to fastq file(s)
@@ -352,9 +355,10 @@ def read_sam_errors(file_path):
 
 
 if __name__ == '__main__':
+    
     # parse the arguments, exclude the script name
     args = parse_args(argv[1:])
-
+    
     # convert many arguments to absolute path
     if not path.isabs(args.outdir):
         args.outdir = path.abspath(args.outdir)
@@ -380,9 +384,10 @@ if __name__ == '__main__':
         model_ind = col_names.index('Model')
         layout_ind = col_names.index('LibraryLayout')
         download_ind = col_names.index('download_path')
+        scientific_name_ind = col_names.index('ScientificName')
         print('Checking the input tsv file: {}'.format(args.input))
-        for ind, name in zip([run_ind, platform_ind, model_ind, layout_ind, download_ind],
-                             ['Run', 'Platform', 'Model', 'LibraryLayout', 'download_path']):
+        for ind, name in zip([run_ind, platform_ind, model_ind, layout_ind, download_ind, scientific_name_ind],
+                             ['Run', 'Platform', 'Model', 'LibraryLayout', 'download_path', 'ScientificName']):
             if ind == -1:
                 print('{} column is missing in input tsv file.'.format(name))
                 exit(1)
@@ -391,6 +396,7 @@ if __name__ == '__main__':
         models = []
         layouts = []
         download_links = []
+        scientific_names = []
         for line in f:
             temp = line.rstrip('\n').split('\t')
             runs.append(temp[run_ind])
@@ -398,9 +404,10 @@ if __name__ == '__main__':
             models.append(temp[model_ind])
             layouts.append(temp[layout_ind])
             download_links.append(temp[download_ind])
+            scientific_names.append(temp[scientific_name_ind])
+            
     files_for_merge = []
     for run, platform, model, layout, download_link in zip(runs, platforms, models, layouts, download_links):
-        print('Processing the file: {}'.format(run))
         if not path.isabs(run):
             run = path.abspath(run)
         run_file_name = path.basename(run)
@@ -419,7 +426,9 @@ if __name__ == '__main__':
                 path.join(args.outdir, args.name, run_file_name, 'output.bam'))
         else:
             print(err_message)
+    
     # combine the sam files together and convert to BAM file
+    print('This are files_for_merge:{}'.format(files_for_merge))
     merge_files(files_for_merge, path.join(args.outdir, args.name))
     # handle the downsample
     if args.downsample:
@@ -500,3 +509,9 @@ if __name__ == '__main__':
             stdout=f_stdout,
             stderr=f_stderr)
         print('Finished processing.')
+    # rename output.bam to [gggsss]_[assembly_name]_RNA-Seq-alignments_[datetime].bam
+    temp = scientific_names[0].split(" ")
+    gene_name = temp[0]
+    species_name = temp[1]
+    new_name = gene_name[0:3] + species_name[0:3]  + '_' + args.assembly + '_RNA-Seq-alignments_' + datetime.datetime.now().strftime("%Y-%m-%d") + '.bam'
+    os.rename(path.join(args.outdir, args.name, 'output.bam'), path.join(args.outdir, args.name, new_name))    
