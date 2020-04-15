@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 import os
 from os import path
+import rnannot.parser import parse_args
 from sys import argv, exit
 from rnannot.utils import get_trimmomatic_jar_path, get_fastqc_path, get_trimmomatic_adapter_path, get_hisat2_command_path, get_bbmap_command_path, get_bbmap_adapter_path, get_gatk_jar_path, get_picard_jar_path
-import rnannot.parser import parse_args
 import subprocess
 from zipfile import ZipFile
 import gzip
 import shutil
 from itertools import islice
 from six.moves import urllib
-import argparse
 import datetime
-import sys
 
 def run_pipeline(file, genome, outdir, name, layout, platform, model, download_link):
     # create the output folder
@@ -355,10 +353,9 @@ def read_sam_errors(file_path):
 
 
 if __name__ == '__main__':
-    
     # parse the arguments, exclude the script name
     args = parse_args(argv[1:])
-    
+
     # convert many arguments to absolute path
     if not path.isabs(args.outdir):
         args.outdir = path.abspath(args.outdir)
@@ -405,7 +402,6 @@ if __name__ == '__main__':
             layouts.append(temp[layout_ind])
             download_links.append(temp[download_ind])
             scientific_names.append(temp[scientific_name_ind])
-            
     files_for_merge = []
     for run, platform, model, layout, download_link in zip(runs, platforms, models, layouts, download_links):
         if not path.isabs(run):
@@ -426,9 +422,7 @@ if __name__ == '__main__':
                 path.join(args.outdir, args.name, run_file_name, 'output.bam'))
         else:
             print(err_message)
-    
     # combine the sam files together and convert to BAM file
-    print('This are files_for_merge:{}'.format(files_for_merge))
     merge_files(files_for_merge, path.join(args.outdir, args.name))
     # handle the downsample
     if args.downsample:

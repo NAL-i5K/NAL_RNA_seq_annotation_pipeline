@@ -4,7 +4,7 @@ import sys
 
 
 def parse_args(argv):
-    parser = argparse.ArgumentParser(description='edit-Easy to use pipeline built for large-scale RNA-seq mapping with a genome assembly')
+    parser = argparse.ArgumentParser(description='Easy to use pipeline built for large-scale RNA-seq mapping with a genome assembly')
     parser.add_argument('-i', '--input', dest='input', type=str, help="A tsv file with a list of SRA runs' information.")
     parser.add_argument('-g', '--genome', dest='genome', help='A fasta file to align with.')
     parser.add_argument('-n', '--name', nargs='?',
