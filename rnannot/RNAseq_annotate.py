@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 from os import path
-import rnannot.parser import parse_args
+from rnannot.parser import parse_args
 from sys import argv, exit
 from rnannot.utils import get_trimmomatic_jar_path, get_fastqc_path, get_trimmomatic_adapter_path, get_hisat2_command_path, get_bbmap_command_path, get_bbmap_adapter_path, get_gatk_jar_path, get_picard_jar_path
 import subprocess
@@ -404,6 +404,7 @@ if __name__ == '__main__':
             scientific_names.append(temp[scientific_name_ind])
     files_for_merge = []
     for run, platform, model, layout, download_link in zip(runs, platforms, models, layouts, download_links):
+        print('Processing the file: {}'.format(run))
         if not path.isabs(run):
             run = path.abspath(run)
         run_file_name = path.basename(run)
