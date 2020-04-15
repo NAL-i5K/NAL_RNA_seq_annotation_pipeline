@@ -37,9 +37,9 @@ urlretrieve(
     'https://github.com/broadinstitute/picard/releases/download/2.18.7/picard.jar',
     join(lib_dir, 'picard.jar'))
 
-print('Downloading GATK v3 ...')
-urlretrieve('https://software.broadinstitute.org/gatk/download/auth?package=GATK-archive&version=3.8-1-0-gf15c1c3ef',
-    join(lib_dir, 'GenomeAnalysisTK.tar.bz2'))
+print('Downloading GATK v4 ...')
+urlretrieve('https://github.com/broadinstitute/gatk/releases/download/4.1.6.0/gatk-4.1.6.0.zip',
+    join(lib_dir, 'gatk-4.1.6.0.zip'))
 
 print('Unpacking fastQC ...')
 with ZipFile(join(lib_dir, 'fastqc_v0.11.7.zip'), 'r') as zip_ref:
@@ -81,19 +81,15 @@ tar = tarfile.open(join(lib_dir, 'BBMap_38.00.tar.gz'), 'r:gz')
 tar.extractall(lib_dir)
 tar.close()
 
-print('Unpacking GATK v3 ...')
-tar = tarfile.open(join(lib_dir, 'GenomeAnalysisTK.tar.bz2'), 'r:bz2')
-for member in tar.getmembers():
-    if member.isreg():  # skip if the TarInfo is not files
-        member.name = basename(member.name) # remove the path by reset it
-        tar.extract(member, lib_dir) # extract
-tar.close()
+print('Unpacking gatk ...')
+with ZipFile(join(lib_dir, 'gatk-4.1.6.0.zip'), 'r') as zip_ref:
+    zip_ref.extractall(lib_dir)
 
 print('Cleaning the files ...')
 files = [
     'BBMap_38.00.tar.gz', 'fastqc_v0.11.7.zip',
     'hisat2-2.1.0-Linux_x86_64.zip', 'Trimmomatic-0.38.zip',
-    'GenomeAnalysisTK.tar.bz2'
+    'gatk-4.1.6.0.zip'
 ]
 for f in files:
     remove(join(lib_dir, f))
