@@ -503,10 +503,20 @@ if __name__ == '__main__':
             ],
             stdout=f_stdout,
             stderr=f_stderr)
-        print('Finished processing.')
-    # rename output.bam to [gggsss]_[assembly_name]_RNA-Seq-alignments_[datetime].bam
+        print('Finished downsampling.')
+
+    # bam to bigwig
+    print('Generating bigwig file ...')
+    bam_dir = path.join(args.outdir, args.name, 'output.bam')
+    bigwig_dir = path.join(args.outdir, args.name, 'output.bigwig')
+    subprocess.run(['python3', 'bam_to_bigwig.py', bam_dir, '-o', bigwig_dir])
+
+    # rename bam and bigwig file to [gggsss]_[assembly_name]_RNA-Seq-alignments_[datetime]
     temp = scientific_names[0].split(" ")
     gene_name = temp[0]
     species_name = temp[1]
-    new_name = gene_name[0:3] + species_name[0:3]  + '_' + args.assembly + '_RNA-Seq-alignments_' + datetime.datetime.now().strftime("%Y-%m-%d") + '.bam'
-    os.rename(path.join(args.outdir, args.name, 'output.bam'), path.join(args.outdir, args.name, new_name))    
+    new_name = gene_name[0:3] + species_name[0:3]  + '_' + args.assembly + '_RNA-Seq-alignments_' + datetime.datetime.now().strftime("%Y-%m-%d")
+    os.rename(path.join(args.outdir, args.name, 'output.bam'), path.join(args.outdir, args.name, new_name + '.bam'))
+    os.rename(path.join(args.outdir, args.name, 'output.bam.bai'), path.join(args.outdir, args.name, new_name + '.bam.bai'))
+    os.rename(path.join(args.outdir, args.name, 'output.bigwig'), path.join(args.outdir, args.name, new_name + '.bigwig'))
+    
