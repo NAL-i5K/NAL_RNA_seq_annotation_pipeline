@@ -11,6 +11,7 @@ import shutil
 from itertools import islice
 from six.moves import urllib
 import datetime
+import random
 
 def run_pipeline(file, genome, outdir, name, layout, platform, model, download_link):
     # create the output folder
@@ -426,91 +427,45 @@ if __name__ == '__main__':
     # combine the sam files together and convert to BAM file
     merge_files(files_for_merge, path.join(args.outdir, args.name))
     # handle the downsample
-    if args.downsample:
-        if not check_ref_files(args.genome):
-            print('Creating sequence directory')
-            # create the picard dict and samtools index
-            file_prefix, _ = path.splitext(args.genome)
-            subprocess.run([
-                'java', '-jar', get_picard_jar_path(), 'CreateSequenceDictionary',
-                'R=' + args.genome, 'O=' + file_prefix + '.dict'
-            ])
-            print('Creating the index')
-            subprocess.run(['samtools', 'faidx', args.genome])
-        print('Validating the sam/bam file ...')
-        f_stdout = open(
-            path.join(args.outdir, args.name, 'check_bam.log'), 'w')
-        f_stderr = open(
-            path.join(args.outdir, args.name, 'check_bam.errlog'), 'w')
-        subprocess.run(
-            [
-                'java', '-jar', get_picard_jar_path(), 'ValidateSamFile',
-                'I=' + path.join(args.outdir, args.name, 'output.bam'),
-                'O=' + path.join(args.outdir, args.name, 'validatesam.log'),
-                'MAX_RECORDS_IN_RAM=50000',
-                'MODE=SUMMARY'
-            ],
-            stdout=f_stdout,
-            stderr=f_stderr)
-        errors, _ = read_sam_errors(
-            path.join(args.outdir, args.name, 'validatesam.log'))
-        # fix missing read groups error
-        if 'MISSING_READ_GROUP' in errors:
-            f_stdout = open(
-                path.join(args.outdir, args.name, 'fix_missing_read_group.log'), 'w')
-            f_stderr = open(
-                path.join(args.outdir, args.name, 'fix_missing_read_group.errlog'), 'w')
-            subprocess.run(
-                [
-                    'java', '-jar', get_picard_jar_path(),
-                    'AddOrReplaceReadGroups',
-                    'I=' + path.join(args.outdir, args.name, 'output.bam'),
-                    'O=' + path.join(args.outdir, args.name, 'output.bam.temp'),
-                    'RGID=output.bam', # read group id is file name
-                    'RGLB=unknown', 'RGPL=unknown', 'RGPU=unknown', 'RGSM=unknown',
-                    'MAX_RECORDS_IN_RAM=50000'
-                ],
-                stdout=f_stdout,
-                stderr=f_stderr
-                )
-            os.remove(path.join(args.outdir, args.name, 'output.bam'))
-            os.rename(path.join(args.outdir, args.name, 'output.bam.temp'), path.join(args.outdir, args.name, 'output.bam'))
-        # TODO: handle other errors and warnings
-        print('Start downsampling ...')
-        f_stdout = open(
-            path.join(args.outdir, args.name, 'build_bam_index.log'), 'w')
-        f_stderr = open(
-            path.join(args.outdir, args.name, 'build_bam_index.errlog'), 'w')
-        subprocess.run(
-            [
-                'java', '-jar',
-                get_picard_jar_path(), 'BuildBamIndex',
-                'I=' + path.join(args.outdir, args.name, 'output.bam')
-            ],
-            stdout=f_stdout,
-            stderr=f_stderr)
-        f_stdout = open(
-            path.join(args.outdir, args.name, 'reduce_coverage.log'), 'w')
-        f_stderr = open(
-            path.join(args.outdir, args.name, 'reduce_coverage.errlog'), 'w')
-        subprocess.run(
-            [
-                'java', '-jar', get_gatk_jar_path(),
-                '-T', 'PrintReads', '-R', args.genome,
-                '-I', path.join(args.outdir, args.name, 'output.bam'),
-                '-o', path.join(args.outdir, args.name, 'output.reduce.bam'),
-                '-dcov', '1', '-U', 'ALLOW_N_CIGAR_READS'
-            ],
-            stdout=f_stdout,
-            stderr=f_stderr)
+    if len(files_for_merge) > 1:
+        print('Start downsampling...')
+        randomseed = random.randint(0,100)
+        proportion = round(1/len(files_for_merge),4)
+        f = randomseed + proportion
+        print('The randomseed.proportion used for downsampling is: {}'.format(f))
+        bam_dir = path.join(args.outdir, args.name, 'output.bam')
+        output_dir = path.join(args.outdir, args.name, 'output-downsampled.bam')
+        subprocess.run(['samtools', 'view', '-bs', '12.5', bam_dir, '-o', output_dir])
         print('Finished downsampling.')
-
-    # bam to bigwig
-    print('Generating bigwig file ...')
+    if len(files_for_merge) == 1:
+        print('bam file was merged from only one SRR, skip downsampling')
+    # sorting downsampled bam file
+    print('Start sorting downsampled bam file...')
+    if len(files_for_merge) > 1:
+        bam_dir = path.join(args.outdir, args.name, 'output-downsampled.bam')
+        output_dir = path.join(args.outdir, args.name, 'output-downsampled.sorted.bam')
+        subprocess.run(['samtools', 'sort', bam_dir, '-o', output_dir])
+    if len(files_for_merge) == 1:
+        print('bam file was merged from only one SRR, skip sorting downsampled bam file')
+    
+    print('Start sorting bam file..')
     bam_dir = path.join(args.outdir, args.name, 'output.bam')
+    output_dir = path.join(args.outdir, args.name, 'output.sorted.bam')
+    subprocess.run(['samtools', 'sort', bam_dir, '-o', output_dir])
+    # converting dowsampled bam to bigwig (includes indexing bam file)
+    print('Generating bigwig file from downsampled bam file...')
+    if len(files_for_merge) > 1:
+        bam_dir = path.join(args.outdir, args.name, 'output-downsampled.sorted.bam')
+        bigwig_dir = path.join(args.outdir, args.name, 'output-downsampled.bigwig')
+        subprocess.run(['python3', 'bam_to_bigwig.py', bam_dir, '-o', bigwig_dir])
+    if len(files_for_merge) == 1:
+        print('bam file was merged from only one SRR, skip generating bigwig file from downsampled bam file')
+    
+    print('Generating bigwig file from bam file...')
+    bam_dir = path.join(args.outdir, args.name, 'output.sorted.bam')
     bigwig_dir = path.join(args.outdir, args.name, 'output.bigwig')
     subprocess.run(['python3', 'bam_to_bigwig.py', bam_dir, '-o', bigwig_dir])
-
+    '''
     # rename bam and bigwig file to [gggsss]_[assembly_name]_RNA-Seq-alignments_[datetime]
     temp = scientific_names[0].split(" ")
     gene_name = temp[0]
@@ -519,4 +474,5 @@ if __name__ == '__main__':
     os.rename(path.join(args.outdir, args.name, 'output.bam'), path.join(args.outdir, args.name, new_name + '.bam'))
     os.rename(path.join(args.outdir, args.name, 'output.bam.bai'), path.join(args.outdir, args.name, new_name + '.bam.bai'))
     os.rename(path.join(args.outdir, args.name, 'output.bigwig'), path.join(args.outdir, args.name, new_name + '.bigwig'))
-    
+    '''
+    print('Finished processing') 
