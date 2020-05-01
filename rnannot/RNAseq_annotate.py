@@ -403,6 +403,7 @@ if __name__ == '__main__':
             layouts.append(temp[layout_ind])
             download_links.append(temp[download_ind])
             scientific_names.append(temp[scientific_name_ind])
+    
     files_for_merge = []
     for run, platform, model, layout, download_link in zip(runs, platforms, models, layouts, download_links):
         print('Processing the file: {}'.format(run))
@@ -465,14 +466,24 @@ if __name__ == '__main__':
     bam_dir = path.join(args.outdir, args.name, 'output.sorted.bam')
     bigwig_dir = path.join(args.outdir, args.name, 'output.bigwig')
     subprocess.run(['python3', 'bam_to_bigwig.py', bam_dir, '-o', bigwig_dir])
-    '''
+    
     # rename bam and bigwig file to [gggsss]_[assembly_name]_RNA-Seq-alignments_[datetime]
     temp = scientific_names[0].split(" ")
     gene_name = temp[0]
     species_name = temp[1]
     new_name = gene_name[0:3] + species_name[0:3]  + '_' + args.assembly + '_RNA-Seq-alignments_' + datetime.datetime.now().strftime("%Y-%m-%d")
-    os.rename(path.join(args.outdir, args.name, 'output.bam'), path.join(args.outdir, args.name, new_name + '.bam'))
-    os.rename(path.join(args.outdir, args.name, 'output.bam.bai'), path.join(args.outdir, args.name, new_name + '.bam.bai'))
+    os.rename(path.join(args.outdir, args.name, 'output.sorted.bam'), path.join(args.outdir, args.name, new_name + '.bam'))
+    os.rename(path.join(args.outdir, args.name, 'output.sorted.bam.bai'), path.join(args.outdir, args.name, new_name + '.bam.bai'))
     os.rename(path.join(args.outdir, args.name, 'output.bigwig'), path.join(args.outdir, args.name, new_name + '.bigwig'))
-    '''
+    files_for_merge = [1,2,3]
+    if len(files_for_merge) > 1:
+        new_name = gene_name[0:3] + species_name[0:3]  + '_' + args.assembly + '_downsampled-RNA-Seq-alignments_' + datetime.datetime.now().strftime("%Y-%m-%d")
+        os.rename(path.join(args.outdir, args.name, 'output-downsampled.sorted.bam'), path.join(args.outdir, args.name, new_name + '.bam'))
+        os.rename(path.join(args.outdir, args.name, 'output-downsampled.sorted.bam.bai'), path.join(args.outdir, args.name, new_name + '.bam.bai'))
+        os.rename(path.join(args.outdir, args.name, 'output-downsampled.bigwig'), path.join(args.outdir, args.name, new_name + '.bigwig'))
+    #  remove intermediate files
+    if not args.tempFile:
+        os.remove(path.join(args.outdir, args.name, 'output.bam'))
+        os.remove(path.join(args.outdir, args.name, 'output-downsampled.bam'))
+
     print('Finished processing') 
