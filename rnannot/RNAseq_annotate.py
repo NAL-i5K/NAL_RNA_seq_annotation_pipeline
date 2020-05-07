@@ -475,7 +475,6 @@ if __name__ == '__main__':
     os.rename(path.join(args.outdir, args.name, 'output.sorted.bam'), path.join(args.outdir, args.name, new_name + '.bam'))
     os.rename(path.join(args.outdir, args.name, 'output.sorted.bam.bai'), path.join(args.outdir, args.name, new_name + '.bam.bai'))
     os.rename(path.join(args.outdir, args.name, 'output.bigwig'), path.join(args.outdir, args.name, new_name + '.bigwig'))
-    files_for_merge = [1,2,3]
     if len(files_for_merge) > 1:
         new_name = gene_name[0:3] + species_name[0:3]  + '_' + args.assembly + '_downsampled-RNA-Seq-alignments_' + datetime.datetime.now().strftime("%Y-%m-%d")
         os.rename(path.join(args.outdir, args.name, 'output-downsampled.sorted.bam'), path.join(args.outdir, args.name, new_name + '.bam'))
