@@ -10,6 +10,7 @@ A RNA-Seq annotation pipeline based on [SRA Toolkit](https://github.com/ncbi/sra
 - Java
 - [SRA Toolkit](https://github.com/ncbi/sra-tools)
 - [samtools](https://github.com/samtools/samtools)
+- [bam_to_bigwig(python3-version)](https://github.com/NAL-i5K/bam_to_bigwig.git)
 
 ## Installation
 
@@ -50,14 +51,37 @@ optional arguments:
   -o [OUTDIR], --outdir [OUTDIR]
                         directory of output folder at, if not specified, use
                         current folder
-  -d, --downsample      if specified, a downsampled bam file will be
-                        downsampled
+  -a, --assembly        The assembly name is used for naming output file
+  -t, --tempFile        if specified, intermediate output bam files will be kept
+  -m, --MaximumSRA      The maximum amout of SRA files downloaded from NCBI. The default is 10
 ```
 
 ## Example
 - `download_sra_metadata.py -t 1049336 -o 1049336.tsv`
 - `wget "https://i5k.nal.usda.gov/data/Arthropoda/ephdan-(Ephemera_danica)/Current%20Genome%20Assembly/1.Genome%20Assembly/BCM-After-Atlas/Scaffolds/Edan07162013.scaffolds.fa.gz"`
-- `RNAseq_annotate.py -i ./example/1049336.tsv -g ./Edan07162013.scaffolds.fa.gz -d`
+- `RNAseq_annotate.py -i ./example/1049336.tsv -g ./Edan07162013.scaffolds.fa.gz -a Edan_2.0`
+
+## Run on Ceres
+**1. Setup conda env**
+- https://scinet.usda.gov/guide/conda/
+- Used conda to create an new env.
+- Package Entrez-direct and Pysam are not included in the module list of Ceres. Use conda to install them into env. (Python3 and Perl5 may be insatlled into env at the same time)
+
+**2. Git clone RNA_annotation_pipeline and bam_to_bigwig into working directory**
+- Git clone branch update-rnannot from this repo.
+- Git clone branch python3_version from bam_to_bigwig repo (https://github.com/NAL-i5K/bam_to_bigwig.git) and copy bam_to_bigwig.py into rnannot folder.
+- Use wget to download wigToBigWig (http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/wigToBigWig) and add it into PATH.
+
+**3. Activate conda env**
+- Do `module load minicanda` and `conda activate [env_name]`
+
+**4. Run setup.py**
+- Do `python3 setup.py install`
+(If meet "ValueError: bad marshal data", delete .pyc file may solve this problem.)
+find /home/[user_name] -name '*.pyc' -delete
+
+**5. Use bash script to submit job**
+- `sbatch sbatch.sh`
 
 ## Notes
 
