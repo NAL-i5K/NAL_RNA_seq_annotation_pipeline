@@ -101,7 +101,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
                     path.join(output_prefix, sra_file_name + '_1.fastq'),
                     path.join(output_prefix, 'output.fastq'), 'ILLUMINACLIP:' +
                     get_trimmomatic_adapter_path('TruSeq3-SE.fa') + ':2:30:10',
-                    'LEADING:3', 'TRAILING:3', 'SLIDINGWINDOW:4:15',
+                    'LEADING:30', 'TRAILING:30', 'SLIDINGWINDOW:4:15',
                     'MINLEN:36', 'TOPHRED33'
                 ],
                 stdout=f_stdout,
@@ -114,7 +114,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
                     path.join(output_prefix, sra_file_name + '_1.fastq'),
                     path.join(output_prefix, 'output.fastq'), 'ILLUMINACLIP:' +
                     get_trimmomatic_adapter_path('TruSeq2-SE.fa') + ':2:30:10',
-                    'LEADING:3', 'TRAILING:3', 'SLIDINGWINDOW:4:15',
+                    'LEADING:30', 'TRAILING:30', 'SLIDINGWINDOW:4:15',
                     'MINLEN:36', 'TOPHRED33'
                 ],
                 stdout=f_stdout,
@@ -127,7 +127,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
                     path.join(output_prefix, sra_file_name + '_1.fastq'),
                     path.join(output_prefix, 'output.fastq'),
                     'ILLUMINACLIP:' + get_bbmap_adapter_path() + ':2:30:10',
-                    'LEADING:3', 'TRAILING:3', 'SLIDINGWINDOW:4:15',
+                    'LEADING:30', 'TRAILING:30', 'SLIDINGWINDOW:4:15',
                     'MINLEN:36', 'TOPHRED33'
                 ],
                 stdout=f_stdout,
@@ -148,7 +148,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
             stderr=f_stderr)
         subprocess.run(
             [
-                get_hisat2_command_path('hisat2'), '-x',
+                get_hisat2_command_path('hisat2'), '--no-mixed', '--no-discordant', '-p', '12', '-x',
                 path.join(output_prefix, genome_file_name), '-U',
                 path.join(output_prefix, 'output.fastq'), '-S',
                 path.join(output_prefix, 'output.sam')
@@ -210,7 +210,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
                     path.join(output_prefix,
                               'output_2_un.fastq'), 'ILLUMINACLIP:' +
                     get_trimmomatic_adapter_path('TruSeq3-PE.fa') + ':2:30:10',
-                    'LEADING:3', 'TRAILING:3', 'SLIDINGWINDOW:4:15',
+                    'LEADING:30', 'TRAILING:30', 'SLIDINGWINDOW:4:15',
                     'MINLEN:36', 'TOPHRED33'
                 ],
                 stdout=f_stdout,
@@ -228,7 +228,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
                     path.join(output_prefix,
                               'output_2_un.fastq'), 'ILLUMINACLIP:' +
                     get_trimmomatic_adapter_path('TruSeq2-PE.fa') + ':2:30:10',
-                    'LEADING:3', 'TRAILING:3', 'SLIDINGWINDOW:4:15',
+                    'LEADING:30', 'TRAILING:30', 'SLIDINGWINDOW:4:15',
                     'MINLEN:36', 'TOPHRED33'
                 ],
                 stdout=f_stdout,
@@ -260,7 +260,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
                     path.join(output_prefix, 'output_2.fastq'),
                     path.join(output_prefix, 'output_2_un.fastq'),
                     'ILLUMINACLIP:' + path.join(output_prefix, 'adapters.fa') +
-                    ':2:30:10', 'LEADING:3', 'TRAILING:3',
+                    ':2:30:10', 'LEADING:30', 'TRAILING:30',
                     'SLIDINGWINDOW:4:15', 'MINLEN:36', 'TOPHRED33'
                 ],
                 stdout=f_stdout,
@@ -288,7 +288,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
             path.join(output_prefix, sra_file_name + '.hisat2.errlog'), 'w')
         subprocess.run(
             [
-                get_hisat2_command_path('hisat2'), '-x',
+                get_hisat2_command_path('hisat2'), '--no-mixed', '--no-discordant', '-p', '12', '-x',
                 path.join(output_prefix, genome_file_name), '-1',
                 path.join(output_prefix, 'output_1.fastq'), '-2',
                 path.join(output_prefix, 'output_2.fastq'), '-S',
@@ -305,7 +305,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
         path.join(output_prefix, sra_file_name + '.samtools.errlog'), 'w')
     subprocess.run(
         [
-            'samtools', 'sort', '-o',
+            'samtools', 'sort', '-@', '12', '-o',
             path.join(output_prefix, 'output.bam'), '-O', 'bam', '-T',
             path.join(output_prefix, 'output'),
             path.join(output_prefix, 'output.sam')
@@ -352,11 +352,9 @@ def read_sam_errors(file_path):
                 break
     return (errors, warns)
 
-
 if __name__ == '__main__':
     # parse the arguments, exclude the script name
     args = parse_args(argv[1:])
-
     # convert many arguments to absolute path
     if not path.isabs(args.outdir):
         args.outdir = path.abspath(args.outdir)
@@ -374,7 +372,7 @@ if __name__ == '__main__':
             with open(new_genome_file_name, 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)
         args.genome = new_genome_file_name
-
+    
     with open(args.input) as f:
         col_names = f.readline().rstrip('\n').split('\t')
         run_ind = col_names.index('Run')
@@ -403,6 +401,32 @@ if __name__ == '__main__':
             layouts.append(temp[layout_ind])
             download_links.append(temp[download_ind])
             scientific_names.append(temp[scientific_name_ind])
+    
+        # check the amount of sra files in tsv
+        if len(runs) > args.MaximumSRA:
+            print('The amount of sra files is more than {}'.format(args.MaximumSRA))
+            print('Randomly pick {} sra files for downloading'.format(args.MaximumSRA)) 
+            runs_temp = []
+            platforms_temp = []
+            models_temp = []
+            layouts_temp = []
+            download_links_temp = []
+            scientific_names_temp = []
+            random_sra = random.sample(range(0,len(runs)-1), args.MaximumSRA) 
+            # randomly pick the maximum amount of sra files to download
+            for i in random_sra:
+                runs_temp.append(runs[i])
+                platforms_temp.append(platforms[i])
+                models_temp.append(models[i])
+                layouts_temp.append(layouts[i])
+                download_links_temp.append(download_links[i])
+                scientific_names_temp.append(scientific_names[i])
+            runs = runs_temp
+            platforms = platforms_temp
+            models = models_temp
+            layouts = layouts_temp
+            download_links = download_links_temp
+            scientific_names = scientific_names_temp
     
     files_for_merge = []
     for run, platform, model, layout, download_link in zip(runs, platforms, models, layouts, download_links):
@@ -436,7 +460,7 @@ if __name__ == '__main__':
         print('The randomseed.proportion used for downsampling is: {}'.format(f))
         bam_dir = path.join(args.outdir, args.name, 'output.bam')
         output_dir = path.join(args.outdir, args.name, 'output-downsampled.bam')
-        subprocess.run(['samtools', 'view', '-bs', '12.5', bam_dir, '-o', output_dir])
+        subprocess.run(['samtools', 'view', '-bs', str(f), '-@', '12', bam_dir, '-o', output_dir])
         print('Finished downsampling.')
     if len(files_for_merge) == 1:
         print('bam file was merged from only one SRR, skip downsampling')
@@ -445,14 +469,14 @@ if __name__ == '__main__':
     if len(files_for_merge) > 1:
         bam_dir = path.join(args.outdir, args.name, 'output-downsampled.bam')
         output_dir = path.join(args.outdir, args.name, 'output-downsampled.sorted.bam')
-        subprocess.run(['samtools', 'sort', bam_dir, '-o', output_dir])
+        subprocess.run(['samtools', 'sort', '-@', '12', bam_dir, '-o', output_dir])
     if len(files_for_merge) == 1:
         print('bam file was merged from only one SRR, skip sorting downsampled bam file')
     
     print('Start sorting bam file..')
     bam_dir = path.join(args.outdir, args.name, 'output.bam')
     output_dir = path.join(args.outdir, args.name, 'output.sorted.bam')
-    subprocess.run(['samtools', 'sort', bam_dir, '-o', output_dir])
+    subprocess.run(['samtools', 'sort', '-@', '12', bam_dir, '-o', output_dir])
     # converting dowsampled bam to bigwig (includes indexing bam file)
     print('Generating bigwig file from downsampled bam file...')
     if len(files_for_merge) > 1:
@@ -485,4 +509,5 @@ if __name__ == '__main__':
         os.remove(path.join(args.outdir, args.name, 'output.bam'))
         os.remove(path.join(args.outdir, args.name, 'output-downsampled.bam'))
 
-    print('Finished processing') 
+    print('Finished processing')
+    
