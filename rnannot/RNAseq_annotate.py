@@ -21,18 +21,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
     if platform == 'ABI_SOLID':
         return (
             False,
-            'Currently, the colorspace data from ABI_SOLID is not supported')
-
-    # decompress the gz file, becasue some of tools don't accept .gz compressed files
-    if genome.endswith('.gz'):
-        new_genome_file_name = path.join(output_prefix,
-                                         path.basename(genome).rstrip('.gz'))
-        with gzip.open(genome, 'rb') as f_in:
-            with open(new_genome_file_name, 'wb') as f_out:
-                shutil.copyfileobj(f_in, f_out)
-        genome = new_genome_file_name
-    sra_file_name = path.basename(file)
-    genome_file_name = path.basename(genome)
+            'Currently, the colorspace data from ABI_SOLID is not supported', '')
 
     # check if SRA file exist or download it first
     if not path.exists(file):
@@ -40,6 +29,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
         urllib.request.urlretrieve(download_link, file)
 
     # convert SRA file to fastq file(s)
+    sra_file_name = path.basename(file)
     print('Unpacking the SRA file: {} ...'.format(file))
     f_stdout = open(
         path.join(output_prefix, sra_file_name + '.fastq-dump.log'), 'w')
@@ -58,10 +48,10 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
     if layout == 'PAIRED' and (not path.exists(
             path.join(
                 output_prefix, sra_file_name + '_1.fastq')) or not path.exists(
-                    path.join(output_prefix, sra_file_name + '_1.fastq'))):
+                    path.join(output_prefix, sra_file_name + '_2.fastq'))):
         return (
             False,
-            "run {} doesn't have paired data. It's not processed.".format(run))
+            "run {} doesn't have paired data. It's not processed.".format(run), '')
 
     # Run FastQC first
     # Then, use Trimmomatic to do trimming
@@ -87,6 +77,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
             zip_ref.extractall(output_prefix)
         f_stdout.close()
         f_stderr.close()
+        # Trimming with trimmomatic
         print('Trimming ...')
         f_stdout = open(
             path.join(output_prefix, sra_file_name + '.trimmomatic.log'), 'w')
@@ -134,29 +125,12 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
                 stderr=f_stderr)
         f_stdout.close()
         f_stderr.close()
-        print('Aligning ...')
-        f_stdout = open(
-            path.join(output_prefix, sra_file_name + '.hisat2.log'), 'w')
-        f_stderr = open(
-            path.join(output_prefix, sra_file_name + '.hisat2.errlog'), 'w')
-        subprocess.run(
-            [
-                get_hisat2_command_path('hisat2-build'), genome,
-                path.join(output_prefix, genome_file_name)
-            ],
-            stdout=f_stdout,
-            stderr=f_stderr)
-        subprocess.run(
-            [
-                get_hisat2_command_path('hisat2'), '--no-mixed', '--no-discordant', '-p', '12', '-x',
-                path.join(output_prefix, genome_file_name), '-U',
-                path.join(output_prefix, 'output.fastq'), '-S',
-                path.join(output_prefix, 'output.sam')
-            ],
-            stdout=f_stdout,
-            stderr=f_stderr)
-        f_stdout.close()
-        f_stderr.close()
+        # Normalizing
+        print('Normalizing ...')   
+        subprocess.run([get_bbmap_command_path('bbnorm.sh'), 'in1=' + path.join(output_prefix, 'output.fastq'), 
+                        'out=' + path.join(output_prefix, 'normalized.fastq'), 'target=' + '100', 'threads=' + '24'])
+        return (True, '', 'single')
+
     elif layout == 'PAIRED':
         print('QC ...')
         f_stdout = open(
@@ -191,6 +165,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
                 path.join(output_prefix, sra_file_name + '_2_fastqc.zip'),
                 'r') as zip_ref:
             zip_ref.extractall(output_prefix)
+        # Trimming with trimmomatic
         print('Trimming ...')
         f_stdout = open(
             path.join(output_prefix, sra_file_name + '.trimmomatic.log'), 'w')
@@ -267,54 +242,11 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
                 stderr=f_stderr)
         f_stdout.close()
         f_stderr.close()
-        print('Aligning ...')
-        f_stdout = open(
-            path.join(output_prefix, sra_file_name + '.hisat2-build.log'), 'w')
-        f_stderr = open(
-            path.join(output_prefix, sra_file_name + '.hisat2-build.errlog'),
-            'w')
-        subprocess.run(
-            [
-                get_hisat2_command_path('hisat2-build'), genome,
-                path.join(output_prefix, genome_file_name)
-            ],
-            stdout=f_stdout,
-            stderr=f_stderr)
-        f_stdout.close()
-        f_stderr.close()
-        f_stdout = open(
-            path.join(output_prefix, sra_file_name + '.hisat2.log'), 'w')
-        f_stderr = open(
-            path.join(output_prefix, sra_file_name + '.hisat2.errlog'), 'w')
-        subprocess.run(
-            [
-                get_hisat2_command_path('hisat2'), '--no-mixed', '--no-discordant', '-p', '12', '-x',
-                path.join(output_prefix, genome_file_name), '-1',
-                path.join(output_prefix, 'output_1.fastq'), '-2',
-                path.join(output_prefix, 'output_2.fastq'), '-S',
-                path.join(output_prefix, 'output.sam')
-            ],
-            stdout=f_stdout,
-            stderr=f_stderr)
-        f_stdout.close()
-        f_stderr.close()
-    # sort and convert to the bam file
-    f_stdout = open(
-        path.join(output_prefix, sra_file_name + '.samtools.log'), 'w')
-    f_stderr = open(
-        path.join(output_prefix, sra_file_name + '.samtools.errlog'), 'w')
-    subprocess.run(
-        [
-            'samtools', 'sort', '-@', '12', '-o',
-            path.join(output_prefix, 'output.bam'), '-O', 'bam', '-T',
-            path.join(output_prefix, 'output'),
-            path.join(output_prefix, 'output.sam')
-        ],
-        stdout=f_stdout,
-        stderr=f_stderr)
-    f_stdout.close()
-    f_stderr.close()
-    return (True, '')
+        # Normalizing
+        print('Normalizing ...')
+        subprocess.run([get_bbmap_command_path('bbnorm.sh'), 'in1=' + path.join(output_prefix,'output_1.fastq'), 'in2=' + path.join(output_prefix, 'output_2.fastq'),
+                       'out1=' + path.join(output_prefix, 'normalized_1.fastq'), 'out2=' + path.join(output_prefix, 'normalized_2.fastq'), 'target=' + '100', 'threads=' + '24'])
+        return (True, '', 'paired')
 
 
 def merge_files(files, outdir):  # merge sam files
@@ -353,6 +285,7 @@ def read_sam_errors(file_path):
     return (errors, warns)
 
 if __name__ == '__main__':
+    
     # parse the arguments, exclude the script name
     args = parse_args(argv[1:])
     # convert many arguments to absolute path
@@ -362,7 +295,7 @@ if __name__ == '__main__':
         args.input = path.abspath(args.input)
     if not path.isabs(args.genome):
         args.genome = path.abspath(args.genome)
-
+   
     os.mkdir(path.join(args.outdir, args.name))
     if args.genome.endswith('.gz'):
         new_genome_file_name = path.join(
@@ -412,7 +345,7 @@ if __name__ == '__main__':
             layouts_temp = []
             download_links_temp = []
             scientific_names_temp = []
-            random_sra = random.sample(range(0,len(runs)-1), args.MaximumSRA) 
+            random_sra = random.sample(range(0,len(runs)-1), args.MaximumSRA)
             # randomly pick the maximum amount of sra files to download
             for i in random_sra:
                 runs_temp.append(runs[i])
@@ -427,14 +360,21 @@ if __name__ == '__main__':
             layouts = layouts_temp
             download_links = download_links_temp
             scientific_names = scientific_names_temp
-    
-    files_for_merge = []
+    # output runs
+    with open(path.join(args.outdir, args.name, 'Source.txt'), 'w') as outfile:
+        outfile.write(scientific_names[0] + '\n')
+        for run in runs:
+            outfile.write(run + '\n')
+ 
+    single_files_for_merge = []
+    paired1_files_for_merge = []
+    paired2_files_for_merge = []
     for run, platform, model, layout, download_link in zip(runs, platforms, models, layouts, download_links):
         print('Processing the file: {}'.format(run))
         if not path.isabs(run):
             run = path.abspath(run)
         run_file_name = path.basename(run)
-        return_status, err_message = run_pipeline(
+        return_status, err_message, return_layout = run_pipeline(
             file=run,
             genome=args.genome,
             outdir=path.join(args.outdir, args.name),
@@ -445,52 +385,143 @@ if __name__ == '__main__':
             download_link=download_link
             )
         if return_status:
-            files_for_merge.append(
-                path.join(args.outdir, args.name, run_file_name, 'output.bam'))
+            if return_layout == 'single':
+                single_files_for_merge.append(
+                    path.join(args.outdir, args.name, run_file_name, 'normalized.fastq'))
+            if return_layout == 'paired':
+                paired1_files_for_merge.append(
+                    path.join(args.outdir, args.name, run_file_name, 'normalized_1.fastq'))
+                paired2_files_for_merge.append(
+                    path.join(args.outdir, args.name, run_file_name, 'normalized_2.fastq'))
         else:
             print(err_message)
-    # combine the sam files together and convert to BAM file
-    merge_files(files_for_merge, path.join(args.outdir, args.name))
-    # handle the downsample
-    if len(files_for_merge) > 1:
-        print('Start downsampling...')
-        randomseed = random.randint(0,100)
-        proportion = round(1/len(files_for_merge),4)
-        f = randomseed + proportion
-        print('The randomseed.proportion used for downsampling is: {}'.format(f))
-        bam_dir = path.join(args.outdir, args.name, 'output.bam')
-        output_dir = path.join(args.outdir, args.name, 'output-downsampled.bam')
-        subprocess.run(['samtools', 'view', '-bs', str(f), '-@', '12', bam_dir, '-o', output_dir])
-        print('Finished downsampling.')
-    if len(files_for_merge) == 1:
-        print('bam file was merged from only one SRR, skip downsampling')
-    # sorting downsampled bam file
-    print('Start sorting downsampled bam file...')
-    if len(files_for_merge) > 1:
-        bam_dir = path.join(args.outdir, args.name, 'output-downsampled.bam')
-        output_dir = path.join(args.outdir, args.name, 'output-downsampled.sorted.bam')
-        subprocess.run(['samtools', 'sort', '-@', '12', bam_dir, '-o', output_dir])
-    if len(files_for_merge) == 1:
-        print('bam file was merged from only one SRR, skip sorting downsampled bam file')
     
-    print('Start sorting bam file..')
+    # merge normalized fastq files together
+    with open(path.join(args.outdir, args.name, 'merged_normalized.fastq'), 'w') as outfile:
+        for fname in single_files_for_merge:
+            with open(fname, 'r') as infile:
+                 for line in infile:
+                     outfile.write(line)
+    with open(path.join(args.outdir, args.name, 'merged_normalized_1.fastq'), 'w') as outfile:
+        for fname in paired1_files_for_merge:
+            with open(fname, 'r') as infile:
+                 for line in infile:
+                     outfile.write(line)
+    with open(path.join(args.outdir, args.name, 'merged_normalized_2.fastq'), 'w') as outfile:
+        for fname in paired2_files_for_merge:
+            with open(fname, 'r') as infile:
+                 for line in infile:
+                     outfile.write(line)
+    # Decompress the gz file, becasue some of tools don't accept .gz compressed files
+    genome = args.genome
+    if genome.endswith('.gz'):
+        new_genome_file_name = path.join(args.outdir, args.name,
+                                         path.basename(genome).rstrip('.gz'))
+        with gzip.open(genome, 'rb') as f_in:
+            with open(new_genome_file_name, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+        genome = new_genome_file_name
+    genome_file_name = path.basename(genome)    
+    # Aligning SINGLE fastq with HISAT2 
+    print('Aligning single file...')
+    f_stdout = open(
+        path.join(args.outdir, args.name, genome_file_name + '_single.hisat2.log'), 'w')
+    f_stderr = open(
+        path.join(args.outdir, args.name, genome_file_name + '_single.hisat2.errlog'), 'w')
+    subprocess.run(
+        [
+            get_hisat2_command_path('hisat2-build'), genome,
+            path.join(args.outdir, args.name, genome_file_name)
+        ],
+        stdout=f_stdout,
+        stderr=f_stderr)
+    subprocess.run(
+        [
+            get_hisat2_command_path('hisat2'), '--no-mixed', '--no-discordant', '-p', '12', '-x',
+            path.join(args.outdir, args.name, genome_file_name), '-U',
+            path.join(args.outdir, args.name, 'merged_normalized.fastq'), '-S',
+            path.join(args.outdir, args.name, 'single_output.sam')
+        ],
+        stdout=f_stdout,
+        stderr=f_stderr)
+    f_stdout.close()
+    f_stderr.close()
+    # Aligning PAIRED fastq with HISAT2
+    print('Aligning paired file...')
+    f_stdout = open(
+        path.join(args.outdir, args.name, genome_file_name + '_paired.hisat2-build.log'), 'w')
+    f_stderr = open(
+        path.join(args.outdir, args.name, genome_file_name + '_paired.hisat2-build.errlog'), 'w')
+    subprocess.run(
+        [
+            get_hisat2_command_path('hisat2-build'), genome,
+            path.join(args.outdir, args.name, genome_file_name)
+        ],
+        stdout=f_stdout,
+        stderr=f_stderr)
+    f_stdout.close()
+    f_stderr.close()
+    f_stdout = open(
+        path.join(args.outdir, args.name, genome_file_name + '_paired.hisat2.log'), 'w')
+    f_stderr = open(
+        path.join(args.outdir, args.name, genome_file_name + '_paired.hisat2.errlog'), 'w')
+    subprocess.run(
+        [
+            get_hisat2_command_path('hisat2'), '--no-mixed', '--no-discordant', '-p', '12', '-x',
+            path.join(args.outdir, args.name, genome_file_name), '-1',
+            path.join(args.outdir, args.name, 'merged_normalized_1.fastq'), '-2',
+            path.join(args.outdir, args.name, 'merged_normalized_2.fastq'), '-S',
+            path.join(args.outdir, args.name, 'paired_output.sam')
+        ],
+        stdout=f_stdout,
+        stderr=f_stderr)
+    f_stdout.close()
+    f_stderr.close()
+    # sort and convert to the bam file-single
+    f_stdout = open(
+        path.join(args.outdir, args.name, genome_file_name + '_single.samtools.log'), 'w')
+    f_stderr = open(
+        path.join(args.outdir, args.name, genome_file_name + '_single.samtools.errlog'), 'w')
+    subprocess.run(
+        [
+            'samtools', 'sort', '-@', '12', '-o',
+            path.join(args.outdir, args.name, 'single_output.bam'), '-O', 'bam', '-T',
+            path.join(args.outdir, args.name, 'single_output'),
+            path.join(args.outdir, args.name, 'single_output.sam') 
+        ],
+        stdout=f_stdout,
+        stderr=f_stderr)
+    f_stdout.close()
+    f_stderr.close()
+    # sort and convert to the bam file-paired
+    f_stdout = open(
+        path.join(args.outdir, args.name, genome_file_name + '_paired.samtools.log'), 'w')
+    f_stderr = open(
+        path.join(args.outdir, args.name, genome_file_name + '_paired.samtools.errlog'), 'w')
+    subprocess.run(
+        [
+            'samtools', 'sort', '-@', '12', '-o',
+            path.join(args.outdir, args.name, 'paired_output.bam'), '-O', 'bam', '-T',
+            path.join(args.outdir, args.name, 'paired_output'),
+            path.join(args.outdir, args.name, 'paired_output.sam')
+        ],
+        stdout=f_stdout,
+        stderr=f_stderr)
+    f_stdout.close()
+    f_stderr.close()
+    # combine the sam/bam files together and convert to BAM file
+    files_for_merge = [path.join(args.outdir, args.name, 'single_output.bam'), path.join(args.outdir, args.name, 'paired_output.bam')]
+    merge_files(files_for_merge, path.join(args.outdir, args.name))
+    # sorting bam file
+    print('Start sorting bam file...')
     bam_dir = path.join(args.outdir, args.name, 'output.bam')
     output_dir = path.join(args.outdir, args.name, 'output.sorted.bam')
     subprocess.run(['samtools', 'sort', '-@', '12', bam_dir, '-o', output_dir])
     # converting dowsampled bam to bigwig (includes indexing bam file)
-    print('Generating bigwig file from downsampled bam file...')
-    if len(files_for_merge) > 1:
-        bam_dir = path.join(args.outdir, args.name, 'output-downsampled.sorted.bam')
-        bigwig_dir = path.join(args.outdir, args.name, 'output-downsampled.bigwig')
-        subprocess.run(['python3', 'bam_to_bigwig.py', bam_dir, '-o', bigwig_dir])
-    if len(files_for_merge) == 1:
-        print('bam file was merged from only one SRR, skip generating bigwig file from downsampled bam file')
-    
     print('Generating bigwig file from bam file...')
     bam_dir = path.join(args.outdir, args.name, 'output.sorted.bam')
     bigwig_dir = path.join(args.outdir, args.name, 'output.bigwig')
     subprocess.run(['python3', 'bam_to_bigwig.py', bam_dir, '-o', bigwig_dir])
-    
     # rename bam and bigwig file to [gggsss]_[assembly_name]_RNA-Seq-alignments_[datetime]
     temp = scientific_names[0].split(" ")
     gene_name = temp[0]
@@ -499,15 +530,12 @@ if __name__ == '__main__':
     os.rename(path.join(args.outdir, args.name, 'output.sorted.bam'), path.join(args.outdir, args.name, new_name + '.bam'))
     os.rename(path.join(args.outdir, args.name, 'output.sorted.bam.bai'), path.join(args.outdir, args.name, new_name + '.bam.bai'))
     os.rename(path.join(args.outdir, args.name, 'output.bigwig'), path.join(args.outdir, args.name, new_name + '.bigwig'))
-    if len(files_for_merge) > 1:
-        new_name = gene_name[0:3] + species_name[0:3]  + '_' + args.assembly + '_downsampled-RNA-Seq-alignments_' + datetime.datetime.now().strftime("%Y-%m-%d")
-        os.rename(path.join(args.outdir, args.name, 'output-downsampled.sorted.bam'), path.join(args.outdir, args.name, new_name + '.bam'))
-        os.rename(path.join(args.outdir, args.name, 'output-downsampled.sorted.bam.bai'), path.join(args.outdir, args.name, new_name + '.bam.bai'))
-        os.rename(path.join(args.outdir, args.name, 'output-downsampled.bigwig'), path.join(args.outdir, args.name, new_name + '.bigwig'))
     #  remove intermediate files
     if not args.tempFile:
         os.remove(path.join(args.outdir, args.name, 'output.bam'))
-        os.remove(path.join(args.outdir, args.name, 'output-downsampled.bam'))
-
+        os.remove(path.join(args.outdir, args.name, 'single_output.bam'))
+        os.remove(path.join(args.outdir, args.name, 'paired_output.bam'))
+        os.remove(path.join(args.outdir, args.name, 'single_output.sam'))
+        os.remove(path.join(args.outdir, args.name, 'paired_output.sam'))
     print('Finished processing')
     
