@@ -360,9 +360,10 @@ if __name__ == '__main__':
             layouts = layouts_temp
             download_links = download_links_temp
             scientific_names = scientific_names_temp
-    # output runs
+    # output runs/scientific_name/assembly_name to Source.txt
     with open(path.join(args.outdir, args.name, 'Source.txt'), 'w') as outfile:
         outfile.write(scientific_names[0] + '\n')
+        outfile.write(args.assembly + '\n')
         for run in runs:
             outfile.write(run + '\n')
  

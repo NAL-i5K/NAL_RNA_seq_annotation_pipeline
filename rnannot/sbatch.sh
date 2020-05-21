@@ -1,11 +1,11 @@
 #!/bin/sh
-#SBATCH -p medium
+#SBATCH -p short
 #SBATCH -N 1
 #SBATCH --cpus-per-task=24
 #SBATCH --mem-per-cpu=8G
 #SBATCH --mail-type=end          # send email when job ends
 #SBATCH --mail-type=fail         # send email if job fails
-#SBATCH --mail-user=k2025242322@gmail.com
+#SBATCH --mail-user=<your email address>
 echo $(date)
 echo "load moudle java, sratoolkit, samtools and rsem"
 module load java sratoolkit samtools rsem
