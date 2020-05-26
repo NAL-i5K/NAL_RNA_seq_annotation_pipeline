@@ -370,7 +370,6 @@ if __name__ == '__main__':
     single_files_for_merge = []
     paired1_files_for_merge = []
     paired2_files_for_merge = []
-    '''
     for run, platform, model, layout, download_link in zip(runs, platforms, models, layouts, download_links):
         print('Processing the file: {}'.format(run))
         if not path.isabs(run):
@@ -531,11 +530,7 @@ if __name__ == '__main__':
     new_name = gene_name[0:3] + species_name[0:3]  + '_' + args.assembly + '_RNA-Seq-alignments_' + datetime.datetime.now().strftime("%Y-%m-%d")
     os.rename(path.join(args.outdir, args.name, 'output.sorted.bam'), path.join(args.outdir, args.name, new_name + '.bam'))
     os.rename(path.join(args.outdir, args.name, 'output.sorted.bam.bai'), path.join(args.outdir, args.name, new_name + '.bam.bai'))
-    os.rename(path.join(args.outdir, args.name, 'output.bigwig'), path.join(args.outdir, args.name, new_name + '.bigwig'))
-    '''
-    args.outdir = '/project/nal_genomics/hsiukang/rnannot/NAL_RNA_seq_annotation_pipeline/rnannot'
-    args.name = 'Tcas-10SRR'
-    new_name = 'Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20'  
+    os.rename(path.join(args.outdir, args.name, 'output.bigwig'), path.join(args.outdir, args.name, new_name + '.bigwig')
     # generate bed file
     subprocess.run(['regtools', 'junctions', 'extract', '-m', '20', '-s', '0', '-o', path.join(args.outdir, args.name, new_name + '.bed'), path.join(args.outdir, args.name, new_name + '.bam')])
     #  remove intermediate files
