@@ -398,21 +398,23 @@ if __name__ == '__main__':
             print(err_message)
     
     # merge normalized fastq files together
-    with open(path.join(args.outdir, args.name, 'merged_normalized.fastq'), 'w') as outfile:
-        for fname in single_files_for_merge:
-            with open(fname, 'r') as infile:
-                 for line in infile:
-                     outfile.write(line)
-    with open(path.join(args.outdir, args.name, 'merged_normalized_1.fastq'), 'w') as outfile:
-        for fname in paired1_files_for_merge:
-            with open(fname, 'r') as infile:
-                 for line in infile:
-                     outfile.write(line)
-    with open(path.join(args.outdir, args.name, 'merged_normalized_2.fastq'), 'w') as outfile:
-        for fname in paired2_files_for_merge:
-            with open(fname, 'r') as infile:
-                 for line in infile:
-                     outfile.write(line)
+    if len(single_files_for_merge) > 0:
+        with open(path.join(args.outdir, args.name, 'merged_normalized.fastq'), 'w') as outfile:
+            for fname in single_files_for_merge:
+                with open(fname, 'r') as infile:
+                     for line in infile:
+                         outfile.write(line)
+    if len(paired1_files_for_merge) > 0 and len(paired2_files_for_merge) > 0:
+        with open(path.join(args.outdir, args.name, 'merged_normalized_1.fastq'), 'w') as outfile:
+            for fname in paired1_files_for_merge:
+                with open(fname, 'r') as infile:
+                     for line in infile:
+                         outfile.write(line)
+        with open(path.join(args.outdir, args.name, 'merged_normalized_2.fastq'), 'w') as outfile:
+            for fname in paired2_files_for_merge:
+                with open(fname, 'r') as infile:
+                     for line in infile:
+                         outfile.write(line)
     # Decompress the gz file, becasue some of tools don't accept .gz compressed files
     genome = args.genome
     if genome.endswith('.gz'):
@@ -423,96 +425,111 @@ if __name__ == '__main__':
                 shutil.copyfileobj(f_in, f_out)
         genome = new_genome_file_name
     genome_file_name = path.basename(genome)    
-    # Aligning SINGLE fastq with HISAT2 
-    print('Aligning single file...')
-    f_stdout = open(
-        path.join(args.outdir, args.name, genome_file_name + '_single.hisat2.log'), 'w')
-    f_stderr = open(
-        path.join(args.outdir, args.name, genome_file_name + '_single.hisat2.errlog'), 'w')
-    subprocess.run(
-        [
-            get_hisat2_command_path('hisat2-build'), genome,
-            path.join(args.outdir, args.name, genome_file_name)
-        ],
-        stdout=f_stdout,
-        stderr=f_stderr)
-    subprocess.run(
-        [
-            get_hisat2_command_path('hisat2'), '--no-mixed', '--no-discordant', '-p', '12', '-x',
-            path.join(args.outdir, args.name, genome_file_name), '-U',
-            path.join(args.outdir, args.name, 'merged_normalized.fastq'), '-S',
-            path.join(args.outdir, args.name, 'single_output.sam')
-        ],
-        stdout=f_stdout,
-        stderr=f_stderr)
-    f_stdout.close()
-    f_stderr.close()
+    # Aligning SINGLE fastq with HISAT2
+    file_for_aligned = path.join(args.outdir, args.name, 'merged_normalized.fastq') 
+    if path.exists(file_for_aligned):
+        print('Aligning single file...')
+        f_stdout = open(
+        	path.join(args.outdir, args.name, genome_file_name + '_single.hisat2.log'), 'w')
+        f_stderr = open(
+        	path.join(args.outdir, args.name, genome_file_name + '_single.hisat2.errlog'), 'w')
+        subprocess.run(
+        	[
+            	get_hisat2_command_path('hisat2-build'), genome,
+            	path.join(args.outdir, args.name, genome_file_name)
+        	],
+        	stdout=f_stdout,
+        	stderr=f_stderr)
+        subprocess.run(
+        	[
+            	get_hisat2_command_path('hisat2'), '--no-mixed', '--no-discordant', '-p', '12', '-x',
+            	path.join(args.outdir, args.name, genome_file_name), '-U',
+            	path.join(args.outdir, args.name, 'merged_normalized.fastq'), '-S',
+            	path.join(args.outdir, args.name, 'single_output.sam')
+        	],
+        	stdout=f_stdout,
+        	stderr=f_stderr)
+        f_stdout.close()
+        f_stderr.close()
     # Aligning PAIRED fastq with HISAT2
-    print('Aligning paired file...')
-    f_stdout = open(
-        path.join(args.outdir, args.name, genome_file_name + '_paired.hisat2-build.log'), 'w')
-    f_stderr = open(
-        path.join(args.outdir, args.name, genome_file_name + '_paired.hisat2-build.errlog'), 'w')
-    subprocess.run(
-        [
-            get_hisat2_command_path('hisat2-build'), genome,
-            path.join(args.outdir, args.name, genome_file_name)
-        ],
-        stdout=f_stdout,
-        stderr=f_stderr)
-    f_stdout.close()
-    f_stderr.close()
-    f_stdout = open(
-        path.join(args.outdir, args.name, genome_file_name + '_paired.hisat2.log'), 'w')
-    f_stderr = open(
-        path.join(args.outdir, args.name, genome_file_name + '_paired.hisat2.errlog'), 'w')
-    subprocess.run(
-        [
-            get_hisat2_command_path('hisat2'), '--no-mixed', '--no-discordant', '-p', '12', '-x',
-            path.join(args.outdir, args.name, genome_file_name), '-1',
-            path.join(args.outdir, args.name, 'merged_normalized_1.fastq'), '-2',
-            path.join(args.outdir, args.name, 'merged_normalized_2.fastq'), '-S',
-            path.join(args.outdir, args.name, 'paired_output.sam')
-        ],
-        stdout=f_stdout,
-        stderr=f_stderr)
-    f_stdout.close()
-    f_stderr.close()
+    file_for_aligned_1 = path.join(args.outdir, args.name, 'merged_normalized_1.fastq')
+    file_for_aligned_2 = path.join(args.outdir, args.name, 'merged_normalized_2.fastq')
+    if path.exists(file_for_aligned_1) and path.exists(file_for_aligned_2):
+        print('Aligning paired file...')
+        f_stdout = open(
+        	path.join(args.outdir, args.name, genome_file_name + '_paired.hisat2-build.log'), 'w')
+        f_stderr = open(
+        	path.join(args.outdir, args.name, genome_file_name + '_paired.hisat2-build.errlog'), 'w')
+        subprocess.run(
+        	[
+            	get_hisat2_command_path('hisat2-build'), genome,
+            	path.join(args.outdir, args.name, genome_file_name)
+        	],
+        	stdout=f_stdout,
+        	stderr=f_stderr)
+        f_stdout.close()
+        f_stderr.close()
+        f_stdout = open(
+        	path.join(args.outdir, args.name, genome_file_name + '_paired.hisat2.log'), 'w')
+        f_stderr = open(
+        	path.join(args.outdir, args.name, genome_file_name + '_paired.hisat2.errlog'), 'w')
+        subprocess.run(
+        	[
+            	get_hisat2_command_path('hisat2'), '--no-mixed', '--no-discordant', '-p', '12', '-x',
+            	path.join(args.outdir, args.name, genome_file_name), '-1',
+            	path.join(args.outdir, args.name, 'merged_normalized_1.fastq'), '-2',
+            	path.join(args.outdir, args.name, 'merged_normalized_2.fastq'), '-S',
+            	path.join(args.outdir, args.name, 'paired_output.sam')
+        	],
+        	stdout=f_stdout,
+        	stderr=f_stderr)
+        f_stdout.close()
+        f_stderr.close()
     # sort and convert to the bam file-single
-    f_stdout = open(
-        path.join(args.outdir, args.name, genome_file_name + '_single.samtools.log'), 'w')
-    f_stderr = open(
-        path.join(args.outdir, args.name, genome_file_name + '_single.samtools.errlog'), 'w')
-    subprocess.run(
-        [
-            'samtools', 'sort', '-@', '12', '-o',
-            path.join(args.outdir, args.name, 'single_output.bam'), '-O', 'bam', '-T',
-            path.join(args.outdir, args.name, 'single_output'),
-            path.join(args.outdir, args.name, 'single_output.sam') 
-        ],
-        stdout=f_stdout,
-        stderr=f_stderr)
-    f_stdout.close()
-    f_stderr.close()
+    if path.exists(path.join(args.outdir, args.name, 'single_output.sam')):
+        f_stdout = open(
+        	path.join(args.outdir, args.name, genome_file_name + '_single.samtools.log'), 'w')
+        f_stderr = open(
+        	path.join(args.outdir, args.name, genome_file_name + '_single.samtools.errlog'), 'w')
+        subprocess.run(
+        	[
+            	'samtools', 'sort', '-@', '12', '-o',
+           	path.join(args.outdir, args.name, 'single_output.bam'), '-O', 'bam', '-T',
+           	path.join(args.outdir, args.name, 'single_output'),
+            	path.join(args.outdir, args.name, 'single_output.sam') 
+        	],
+        	stdout=f_stdout,
+        	stderr=f_stderr)
+        f_stdout.close()
+        f_stderr.close()
     # sort and convert to the bam file-paired
-    f_stdout = open(
-        path.join(args.outdir, args.name, genome_file_name + '_paired.samtools.log'), 'w')
-    f_stderr = open(
-        path.join(args.outdir, args.name, genome_file_name + '_paired.samtools.errlog'), 'w')
-    subprocess.run(
-        [
-            'samtools', 'sort', '-@', '12', '-o',
-            path.join(args.outdir, args.name, 'paired_output.bam'), '-O', 'bam', '-T',
-            path.join(args.outdir, args.name, 'paired_output'),
-            path.join(args.outdir, args.name, 'paired_output.sam')
-        ],
-        stdout=f_stdout,
-        stderr=f_stderr)
-    f_stdout.close()
-    f_stderr.close()
+    if path.exists(path.join(args.outdir, args.name, 'paired_output.sam')):
+    	f_stdout = open(
+        	path.join(args.outdir, args.name, genome_file_name + '_paired.samtools.log'), 'w')
+    	f_stderr = open(
+        	path.join(args.outdir, args.name, genome_file_name + '_paired.samtools.errlog'), 'w')
+    	subprocess.run(
+        	[
+            	'samtools', 'sort', '-@', '12', '-o',
+            	path.join(args.outdir, args.name, 'paired_output.bam'), '-O', 'bam', '-T',
+           	path.join(args.outdir, args.name, 'paired_output'),
+            	path.join(args.outdir, args.name, 'paired_output.sam')
+        	],
+        	stdout=f_stdout,
+        	stderr=f_stderr)
+    	f_stdout.close()
+    	f_stderr.close()
     # combine the sam/bam files together and convert to BAM file
-    files_for_merge = [path.join(args.outdir, args.name, 'single_output.bam'), path.join(args.outdir, args.name, 'paired_output.bam')]
-    merge_files(files_for_merge, path.join(args.outdir, args.name))
+    if path.exists(path.join(args.outdir, args.name, 'single_output.bam')) and path.exists(path.join(args.outdir, args.name, 'paired_output.bam')):
+        print('Start merging single and paired output files...')
+        files_for_merge = [path.join(args.outdir, args.name, 'single_output.bam'), path.join(args.outdir, args.name, 'paired_output.bam')]
+        merge_files(files_for_merge, path.join(args.outdir, args.name))
+    elif path.exists(path.join(args.outdir, args.name, 'single_output.bam')):
+        print('The layout of all files is SINGLE, skip merging process...')
+        os.rename(path.join(args.outdir, args.name, 'single_output.bam'), path.join(args.outdir, args.name, 'output.bam'))
+    elif path.exists(path.join(args.outdir, args.name, 'paired_output.bam')):
+        print('The layout of all files is PAIRED, skip merging process...')
+        os.rename(path.join(args.outdir, args.name, 'paired_output.bam'), path.join(args.outdir, args.name, 'output.bam'))
     # sorting bam file
     print('Start sorting bam file...')
     bam_dir = path.join(args.outdir, args.name, 'output.bam')
@@ -530,15 +547,19 @@ if __name__ == '__main__':
     new_name = gene_name[0:3] + species_name[0:3]  + '_' + args.assembly + '_RNA-Seq-alignments_' + datetime.datetime.now().strftime("%Y-%m-%d")
     os.rename(path.join(args.outdir, args.name, 'output.sorted.bam'), path.join(args.outdir, args.name, new_name + '.bam'))
     os.rename(path.join(args.outdir, args.name, 'output.sorted.bam.bai'), path.join(args.outdir, args.name, new_name + '.bam.bai'))
-    os.rename(path.join(args.outdir, args.name, 'output.bigwig'), path.join(args.outdir, args.name, new_name + '.bigwig')
+    os.rename(path.join(args.outdir, args.name, 'output.bigwig'), path.join(args.outdir, args.name, new_name + '.bigwig'))
     # generate bed file
     subprocess.run(['regtools', 'junctions', 'extract', '-m', '20', '-s', '0', '-o', path.join(args.outdir, args.name, new_name + '.bed'), path.join(args.outdir, args.name, new_name + '.bam')])
     #  remove intermediate files
     if not args.tempFile:
         os.remove(path.join(args.outdir, args.name, 'output.bam'))
-        os.remove(path.join(args.outdir, args.name, 'single_output.bam'))
-        os.remove(path.join(args.outdir, args.name, 'paired_output.bam'))
-        os.remove(path.join(args.outdir, args.name, 'single_output.sam'))
-        os.remove(path.join(args.outdir, args.name, 'paired_output.sam'))
+        if path.exists(path.join(args.outdir, args.name, 'single_output.sam')):
+            os.remove(path.join(args.outdir, args.name, 'single_output.sam'))
+        if path.exists(path.join(args.outdir, args.name, 'single_output.bam')):
+            os.remove(path.join(args.outdir, args.name, 'single_output.bam'))
+        if path.exists(path.join(args.outdir, args.name, 'paired_output.sam')):
+            os.remove(path.join(args.outdir, args.name, 'paired_output.sam'))
+        if path.exists(path.join(args.outdir, args.name, 'paired_output.bam')):
+            os.remove(path.join(args.outdir, args.name, 'paired_output.bam'))
     print('Finished processing')
     
