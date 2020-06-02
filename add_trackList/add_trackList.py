@@ -13,7 +13,7 @@ parser.add_argument("-bigwig","--input_bigwig", help="bigwig file name",type=str
 parser.add_argument("-bai","--input_bai", help="indexed bam file name",type=str)
 parser.add_argument("-bed","--input_bed", help="indexed bed file name",type=str)
 parser.add_argument("-track","--input_track", help="trackList.json file path",type=str)
-parser.add_argument("-s","--Source", help="Source.txt file path",type=str)
+parser.add_argument("-s","--Source", help="Source.txt file name",type=str)
 args = parser.parse_args()
 
 #rsync files from Ceres to working directory
