@@ -361,9 +361,11 @@ if __name__ == '__main__':
             download_links = download_links_temp
             scientific_names = scientific_names_temp
     # output runs/scientific_name/assembly_name to Source.txt
+    date = datetime.datetime.now().strftime("%Y-%m-%d") 
     with open(path.join(args.outdir, args.name, 'Source.txt'), 'w') as outfile:
         outfile.write(scientific_names[0] + '\n')
         outfile.write(args.assembly + '\n')
+        outfile.write(date + '\n')
         for run in runs:
             outfile.write(run + '\n')
  
@@ -544,7 +546,7 @@ if __name__ == '__main__':
     temp = scientific_names[0].split(" ")
     gene_name = temp[0]
     species_name = temp[1]
-    new_name = gene_name[0:3] + species_name[0:3]  + '_' + args.assembly + '_RNA-Seq-alignments_' + datetime.datetime.now().strftime("%Y-%m-%d")
+    new_name = gene_name[0:3] + species_name[0:3]  + '_' + args.assembly + '_RNA-Seq-alignments_' + date
     os.rename(path.join(args.outdir, args.name, 'output.sorted.bam'), path.join(args.outdir, args.name, new_name + '.bam'))
     os.rename(path.join(args.outdir, args.name, 'output.sorted.bam.bai'), path.join(args.outdir, args.name, new_name + '.bam.bai'))
     os.rename(path.join(args.outdir, args.name, 'output.bigwig'), path.join(args.outdir, args.name, new_name + '.bigwig'))
