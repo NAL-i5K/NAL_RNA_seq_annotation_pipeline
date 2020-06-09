@@ -55,7 +55,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
 
     # Run FastQC first
     # Then, use Trimmomatic to do trimming
-    # In the last step, perfom the alignment using HISAT2
+    # In the last step, perfom normalizing using bbnorm
     fastqc_path = get_fastqc_path()
     trimmomatic_jar_path = get_trimmomatic_jar_path()
     if layout == 'SINGLE':
