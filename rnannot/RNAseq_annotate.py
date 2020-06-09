@@ -297,15 +297,18 @@ if __name__ == '__main__':
         args.genome = path.abspath(args.genome)
    
     os.mkdir(path.join(args.outdir, args.name))
-    if args.genome.endswith('.gz'):
-        new_genome_file_name = path.join(
-            args.outdir, args.name,
-            path.basename(args.genome).rstrip('.gz'))
-        with gzip.open(args.genome, 'rb') as f_in:
+
+    # Decompress the gz file, becasue some of tools don't accept .gz compressed files
+    genome = args.genome
+    if genome.endswith('.gz'):
+        new_genome_file_name = path.join(args.outdir, args.name,
+                                         path.basename(genome).rstrip('.gz'))
+        with gzip.open(genome, 'rb') as f_in:
             with open(new_genome_file_name, 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)
-        args.genome = new_genome_file_name
-    
+        genome = new_genome_file_name
+    genome_file_name = path.basename(genome)
+
     with open(args.input) as f:
         col_names = f.readline().rstrip('\n').split('\t')
         run_ind = col_names.index('Run')
@@ -379,7 +382,7 @@ if __name__ == '__main__':
         run_file_name = path.basename(run)
         return_status, err_message, return_layout = run_pipeline(
             file=run,
-            genome=args.genome,
+            genome=genome,
             outdir=path.join(args.outdir, args.name),
             name=run_file_name,
             layout=layout,
@@ -417,16 +420,7 @@ if __name__ == '__main__':
                 with open(fname, 'r') as infile:
                      for line in infile:
                          outfile.write(line)
-    # Decompress the gz file, becasue some of tools don't accept .gz compressed files
-    genome = args.genome
-    if genome.endswith('.gz'):
-        new_genome_file_name = path.join(args.outdir, args.name,
-                                         path.basename(genome).rstrip('.gz'))
-        with gzip.open(genome, 'rb') as f_in:
-            with open(new_genome_file_name, 'wb') as f_out:
-                shutil.copyfileobj(f_in, f_out)
-        genome = new_genome_file_name
-    genome_file_name = path.basename(genome)    
+
     # Aligning SINGLE fastq with HISAT2
     file_for_aligned = path.join(args.outdir, args.name, 'merged_normalized.fastq') 
     if path.exists(file_for_aligned):
