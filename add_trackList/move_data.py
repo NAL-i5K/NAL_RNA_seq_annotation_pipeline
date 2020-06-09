@@ -6,7 +6,6 @@ import shutil
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-Node1a","--node1_account", help="apollo-nodea account e.g user@apollo-node1,nal.usda.gov",type=str)
-parser.add_argument("-bam","--input_bam", help="bam file name",type=str)
 parser.add_argument("-s","--Source", help="Source.txt file path",type=str)
 args = parser.parse_args()
 
@@ -22,10 +21,10 @@ with open(args.Source) as f:
     for line in f:
         Submission.append(line[:-1])
 
-gggsss = genus_name[0:3].lower() + species_name[0:3]
 temp = scientific_name.split(" ")
 genus_name = temp[0]
 species_name = temp[1]
+gggsss = genus_name[0:3].lower() + species_name[0:3]
 bam_file_date = date
 
 #back up trackList on apollo-node1 server
@@ -51,5 +50,6 @@ proc_ln = subprocess.Popen(['ssh', args.node1_account, 'ln -s', path.join('/app/
 proc_ln.communicate()
 
 #rsync junctions to apollo-node1 server
-proc_junction = subprocess.Popen(['rsync', '-P', '-r', path.join('/app/data/other_species', gggsss, assembly_name, 'jbrowse/data/tracks', args.input_bam[0:-4] + '_junctions'), args.node1_account + ':' + path.join('/app/data/other_species', gggsss, assembly_name, 'jbrowse/data/tracks/')])
+junctions_folder_name = genus_name[0:3] + species_name[0:3] + '_' + assembly_name + '_RNA-Seq-alignments_' + bam_file_date + '_junctions'
+proc_junction = subprocess.Popen(['rsync', '-P', '-r', path.join('/app/data/other_species', gggsss, assembly_name, 'jbrowse/data/tracks', junctions_folder_name), args.node1_account + ':' + path.join('/app/data/other_species', gggsss, assembly_name, 'jbrowse/data/tracks/')])
 proc_junction.communicate()
