@@ -74,7 +74,7 @@ optional arguments:
 - `wget "https://i5k.nal.usda.gov/data/Arthropoda/ephdan-(Ephemera_danica)/Current%20Genome%20Assembly/1.Genome%20Assembly/BCM-After-Atlas/Scaffolds/Edan07162013.scaffolds.fa.gz"`
 - `RNAseq_annotate.py -i ./example/1049336.tsv -g ./Edan07162013.scaffolds.fa.gz -a Edan_2.0`
 **Add_trackList**
-- `add_trackList.py -a user@login.scinet.science -p /project/nal_genomics/user-name/NAL_RNA_seq_annotation_pipeline/rnannot/2020-05-20 -bam Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bam -bai Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bam.bai -bigwig Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bigwig -bed Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bed -track /app/data/other_species/tricas/jbrowse/data/trackList.json -s Source.txt`
+- `add_trackList.py -a user@login.scinet.science -p /project/nal_genomics/user-name/NAL_RNA_seq_annotation_pipeline/rnannot/2020-05-20 -bam Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bam -bai Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bam.bai -bigwig Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bigwig -bed Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bed -track /app/data/other_species/tricas/Tcas5.2/jbrowse/data/trackList.json -s Source.txt`
 
 ## Run on Ceres
 **1. Setup conda env**
