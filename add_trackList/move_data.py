@@ -16,15 +16,17 @@ with open(args.Source) as f:
     scientific_name = line[:-1]
     line = f.readline()
     assembly_name = line[:-1]
+    line = f.readline()
+    date = line[:-1]
     Submission = []
     for line in f:
         Submission.append(line[:-1])
 
-gggsss = args.input_bam[0:6].lower()
+gggsss = genus_name[0:3].lower() + species_name[0:3]
 temp = scientific_name.split(" ")
 genus_name = temp[0]
 species_name = temp[1]
-bam_file_date = args.input_bam[-14:-4]
+bam_file_date = date
 
 #back up trackList on apollo-node1 server
 proc_backup = subprocess.Popen(['ssh', args.node1_account, 'cp ' + path.join('/app/data/other_species', gggsss, assembly_name, 'jbrowse/data/trackList.json'), path.join('/app/data/other_species', gggsss, assembly_name, 'jbrowse/data/trackList.json.bak')])
