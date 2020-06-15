@@ -46,7 +46,8 @@ optional arguments:
 
 
 RNAseq_annotate.py [-h] [-i INPUT] [-g GENOME] [-n [NAME]]
-                          [-o [OUTDIR]] [-a assembly] [-t tempFile] [-m MaximumSRA]
+                               [-o [OUTDIR]] [-a ASSEMBLY] [-t]
+                               [-m MAXIMUMSRA]
 
 Easy to use pipeline built for large-scale RNA-seq mapping with a genome
 assembly
@@ -63,9 +64,46 @@ optional arguments:
   -o [OUTDIR], --outdir [OUTDIR]
                         directory of output folder at, if not specified, use
                         current folder
-  -a, --assembly        The assembly name is used for naming output file
-  -t, --tempFile        if specified, intermediate output bam files will be kept
-  -m, --MaximumSRA      The maximum amout of SRA files downloaded from NCBI. The default is 10
+  -a ASSEMBLY, --assembly ASSEMBLY
+                        The assembly name is used for naming output file
+  -t, --tempFile        
+                        if specified, intermediate output bam files will be kept
+  -m MAXIMUMSRA, --MaximumSRA MAXIMUMSRA
+                        The maximum amout of SRA files downloaded from NCBI. The default is 10
+  
+add_trackList.py [-h] [-a INPUT_ACCOUNT] [-p INPUT_PATH]
+                        [-bam INPUT_BAM] [-bigwig INPUT_BIGWIG]
+                        [-bai INPUT_BAI] [-bed INPUT_BED] [-track INPUT_TRACK]
+                        [-s SOURCE]
+                        
+optional arguments:
+  -h, --help            show this help message and exit
+  -a INPUT_ACCOUNT, --input_account INPUT_ACCOUNT
+                        scinet account e.g user@login.scinet.science
+  -p INPUT_PATH, --input_path INPUT_PATH
+                        path of RNA_annotation output files on Scinet
+  -bam INPUT_BAM, --input_bam INPUT_BAM
+                        bam file name
+  -bigwig INPUT_BIGWIG, --input_bigwig INPUT_BIGWIG
+                        bigwig file name
+  -bai INPUT_BAI, --input_bai INPUT_BAI
+                        indexed bam file name
+  -bed INPUT_BED, --input_bed INPUT_BED
+                        indexed bed file name
+  -track INPUT_TRACK, --input_track INPUT_TRACK
+                        trackList.json file path
+  -s SOURCE, --Source SOURCE
+                        Source.txt file name
+
+move_data.py [-h] [-Node1a NODE1_ACCOUNT] [-s SOURCE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -Node1a NODE1_ACCOUNT, --node1_account NODE1_ACCOUNT
+                        apollo-nodea account e.g user@apollo-
+                        node1,nal.usda.gov
+  -s SOURCE, --Source SOURCE
+                        Source.txt file path
 ```
 
 ## Example
@@ -73,8 +111,10 @@ optional arguments:
 - `download_sra_metadata.py -t 1049336 -o 1049336.tsv`
 - `wget "https://i5k.nal.usda.gov/data/Arthropoda/ephdan-(Ephemera_danica)/Current%20Genome%20Assembly/1.Genome%20Assembly/BCM-After-Atlas/Scaffolds/Edan07162013.scaffolds.fa.gz"`
 - `RNAseq_annotate.py -i ./example/1049336.tsv -g ./Edan07162013.scaffolds.fa.gz -a Edan_2.0`
+
 **Add_trackList**
 - `add_trackList.py -a user@login.scinet.science -p /project/nal_genomics/user-name/NAL_RNA_seq_annotation_pipeline/rnannot/2020-05-20 -bam Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bam -bai Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bam.bai -bigwig Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bigwig -bed Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bed -track /app/data/other_species/tricas/Tcas5.2/jbrowse/data/trackList.json -s Source.txt`
+- `move_data.py -Node1a user@apollo-node1.nal.usda.gov -s SOURCE.txt`
 
 ## Run on Ceres
 **1. Setup conda env**
@@ -110,7 +150,7 @@ find /home/[user_name] -name '*.pyc' -delete
     - For paired-end layout, `Trimmomatic` will produces four fastq files: forward\_paired, forward\_unpaired, reverse\_paired, reverse\_unpaired, but we will only use the paired data in alignment (by HISAT2)
   - `download_path` column represents where we can download the SRA files.
 - When using on server, make sure you use the `JAVA_TOOL_OPTIONS` environment to set the maximum memory usage like `export JAVA_TOOL_OPTIONS="-Xmx2g"` when running the toolkit. You can also check an example [here](example/example_script.sh).
-- The format of the output name of bam file, indexed bam file, bigwig file and bed file is [gggsss] _ [assembly Name] _ RNA-Seq-alignments _ [date].
+- The format of the output name of bam file, indexed bam file, bigwig file and bed file is [gggsss] _ [assembly Name] _ RNA-Seq-alignments _ [date]. The name of the new folders created in apollo server is also based on this format. Changing this format may affect the downstream workflow(add_trackList.py and move_data.py). 
 
 ## Tests
 
