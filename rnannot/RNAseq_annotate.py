@@ -13,9 +13,9 @@ from six.moves import urllib
 import datetime
 import random
 
-def run_pipeline(file, genome, outdir, name, layout, platform, model, download_link):
+def run_pipeline(run, genome, outdir, layout, platform, model):
     # create the output folder
-    output_prefix = path.join(outdir, name)
+    output_prefix = path.join(outdir, run)
     os.mkdir(output_prefix)
 
     if platform == 'ABI_SOLID':
@@ -23,14 +23,9 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
             False,
             'Currently, the colorspace data from ABI_SOLID is not supported', '')
 
-    # check if SRA file exist or download it first
-    if not path.exists(file):
-        print('downloading sra files...')
-        urllib.request.urlretrieve(download_link, file)
-
-    # convert SRA file to fastq file(s)
-    sra_file_name = path.basename(file)
-    print('Unpacking the SRA file: {} ...'.format(file))
+    # download SRA files and convert SRA file to fastq file(s)
+    print('downloading sra files...')
+    sra_file_name = run
     f_stdout = open(
         path.join(output_prefix, sra_file_name + '.fastq-dump.log'), 'w')
     f_stderr = open(
@@ -38,7 +33,7 @@ def run_pipeline(file, genome, outdir, name, layout, platform, model, download_l
     subprocess.run(
         [
             'fastq-dump', '--dumpbase', '--split-files', '-O', output_prefix,
-            file
+            run
         ],
         stdout=f_stdout,
         stderr=f_stderr)
@@ -315,11 +310,10 @@ if __name__ == '__main__':
         platform_ind = col_names.index('Platform')
         model_ind = col_names.index('Model')
         layout_ind = col_names.index('LibraryLayout')
-        download_ind = col_names.index('download_path')
         scientific_name_ind = col_names.index('ScientificName')
         print('Checking the input tsv file: {}'.format(args.input))
-        for ind, name in zip([run_ind, platform_ind, model_ind, layout_ind, download_ind, scientific_name_ind],
-                             ['Run', 'Platform', 'Model', 'LibraryLayout', 'download_path', 'ScientificName']):
+        for ind, name in zip([run_ind, platform_ind, model_ind, layout_ind, scientific_name_ind],
+                             ['Run', 'Platform', 'Model', 'LibraryLayout', 'ScientificName']):
             if ind == -1:
                 print('{} column is missing in input tsv file.'.format(name))
                 exit(1)
@@ -327,7 +321,6 @@ if __name__ == '__main__':
         platforms = []
         models = []
         layouts = []
-        download_links = []
         scientific_names = []
         for line in f:
             temp = line.rstrip('\n').split('\t')
@@ -335,7 +328,6 @@ if __name__ == '__main__':
             platforms.append(temp[platform_ind])
             models.append(temp[model_ind])
             layouts.append(temp[layout_ind])
-            download_links.append(temp[download_ind])
             scientific_names.append(temp[scientific_name_ind])
     
         # check the amount of sra files in tsv
@@ -346,7 +338,6 @@ if __name__ == '__main__':
             platforms_temp = []
             models_temp = []
             layouts_temp = []
-            download_links_temp = []
             scientific_names_temp = []
             random_sra = random.sample(range(0,len(runs)-1), args.MaximumSRA)
             # randomly pick the maximum amount of sra files to download
@@ -355,13 +346,11 @@ if __name__ == '__main__':
                 platforms_temp.append(platforms[i])
                 models_temp.append(models[i])
                 layouts_temp.append(layouts[i])
-                download_links_temp.append(download_links[i])
                 scientific_names_temp.append(scientific_names[i])
             runs = runs_temp
             platforms = platforms_temp
             models = models_temp
             layouts = layouts_temp
-            download_links = download_links_temp
             scientific_names = scientific_names_temp
     # output runs/scientific_name/assembly_name to Source.txt
     date = datetime.datetime.now().strftime("%Y-%m-%d") 
@@ -375,20 +364,15 @@ if __name__ == '__main__':
     single_files_for_merge = []
     paired1_files_for_merge = []
     paired2_files_for_merge = []
-    for run, platform, model, layout, download_link in zip(runs, platforms, models, layouts, download_links):
+    for run, platform, model, layout in zip(runs, platforms, models, layouts):
         print('Processing the file: {}'.format(run))
-        if not path.isabs(run):
-            run = path.abspath(run)
-        run_file_name = path.basename(run)
         return_status, err_message, return_layout = run_pipeline(
-            file=run,
+            run=run,
             genome=genome,
             outdir=path.join(args.outdir, args.name),
-            name=run_file_name,
             layout=layout,
             platform=platform,
             model=model,
-            download_link=download_link
             )
         if return_status:
             if return_layout == 'single':
