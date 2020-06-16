@@ -1,17 +1,18 @@
 from urllib.request import urlretrieve
 from stat import S_IXUSR, S_IXOTH, S_IXGRP, S_IRUSR, S_IROTH, S_IRGRP, S_IWUSR
-from os import mkdir, chmod, remove
+from os import mkdir, chmod, remove, chdir
 from os.path import dirname, abspath, join, exists, basename
 from zipfile import ZipFile
 import tarfile
 from setuptools import setup, find_packages
+import subprocess 
 
 project_root = dirname(abspath(__file__))
 lib_dir = join(project_root, 'rnannot', 'lib')
 
 if not exists(lib_dir):
     mkdir(lib_dir)
-
+'''
 print('Downloading fastQC ...')
 urlretrieve(
     'https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.7.zip',
@@ -41,6 +42,19 @@ print('Downloading GATK v4 ...')
 urlretrieve('https://github.com/broadinstitute/gatk/releases/download/4.1.6.0/gatk-4.1.6.0.zip',
     join(lib_dir, 'gatk-4.1.6.0.zip'))
 
+print('Downloading bam_to_bigwig ...')
+subprocess.run(['git', 'clone', '-b', 'python3_version','--single-branch', 'https://github.com/NAL-i5K/bam_to_bigwig.git', join(lib_dir, 'bam_to_bigwig')])
+
+print('Downloading regtools ...')
+subprocess.run(['git', 'clone', 'https://github.com/griffithlab/regtools', join(lib_dir, 'regtools')])
+
+mkdir(join(lib_dir, 'regtools', 'build'))
+
+chdir(join(lib_dir, 'regtools', 'build'))
+subprocess.run(['cmake', '..'])
+subprocess.run(['make'])
+chdir(join(project_root))
+
 print('Unpacking fastQC ...')
 with ZipFile(join(lib_dir, 'fastqc_v0.11.7.zip'), 'r') as zip_ref:
     zip_ref.extractall(lib_dir)
@@ -56,6 +70,7 @@ with ZipFile(join(lib_dir, 'Trimmomatic-0.38.zip'), 'r') as zip_ref:
 print('Unpacking HISAT2 ...')
 with ZipFile(join(lib_dir, 'hisat2-2.1.0-Linux_x86_64.zip'), 'r') as zip_ref:
     zip_ref.extractall(lib_dir)
+
 # fix the permission of HISAT2
 chmod(
     join(lib_dir, 'hisat2-2.1.0', 'hisat2'),
@@ -93,7 +108,7 @@ files = [
 ]
 for f in files:
     remove(join(lib_dir, f))
-
+'''
 setup(
     name='rnannot',
     version='0.0.1',
@@ -108,3 +123,4 @@ setup(
     url=
     'https://github.com/NAL-i5K/NAL_RNA_seq_annotation_pipeline',  # project home page, if any
     )
+    

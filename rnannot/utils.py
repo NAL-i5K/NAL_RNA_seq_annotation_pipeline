@@ -34,3 +34,9 @@ def get_gatk_jar_path():
 
 def get_picard_jar_path():
     return path.join(get_lib_path(), 'picard.jar')
+
+def get_bam_to_bigwig_path():
+    return path.join(get_lib_path(), 'bam_to_bigwig', 'bam_to_bigwig.py')
+
+def get_regtools_path():
+    return path.join(get_lib_path(), 'regtools', 'build', 'regtools')

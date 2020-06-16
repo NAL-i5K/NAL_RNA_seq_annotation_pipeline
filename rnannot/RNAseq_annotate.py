@@ -3,7 +3,7 @@ import os
 from os import path
 from rnannot.parser import parse_args
 from sys import argv, exit
-from rnannot.utils import get_trimmomatic_jar_path, get_fastqc_path, get_trimmomatic_adapter_path, get_hisat2_command_path, get_bbmap_command_path, get_bbmap_adapter_path, get_gatk_jar_path, get_picard_jar_path
+from rnannot.utils import get_trimmomatic_jar_path, get_fastqc_path, get_trimmomatic_adapter_path, get_hisat2_command_path, get_bbmap_command_path, get_bbmap_adapter_path, get_gatk_jar_path, get_picard_jar_path, get_bam_to_bigwig_path, get_regtools_path
 import subprocess
 from zipfile import ZipFile
 import gzip
@@ -339,7 +339,7 @@ if __name__ == '__main__':
             models_temp = []
             layouts_temp = []
             scientific_names_temp = []
-            random_sra = random.sample(range(0,len(runs)-1), args.MaximumSRA)
+            random_sra = random.sample(range(0,len(runs)), args.MaximumSRA)
             # randomly pick the maximum amount of sra files to download
             for i in random_sra:
                 runs_temp.append(runs[i])
@@ -377,12 +377,12 @@ if __name__ == '__main__':
         if return_status:
             if return_layout == 'single':
                 single_files_for_merge.append(
-                    path.join(args.outdir, args.name, run_file_name, 'normalized.fastq'))
+                    path.join(args.outdir, args.name, run, 'normalized.fastq'))
             if return_layout == 'paired':
                 paired1_files_for_merge.append(
-                    path.join(args.outdir, args.name, run_file_name, 'normalized_1.fastq'))
+                    path.join(args.outdir, args.name, run, 'normalized_1.fastq'))
                 paired2_files_for_merge.append(
-                    path.join(args.outdir, args.name, run_file_name, 'normalized_2.fastq'))
+                    path.join(args.outdir, args.name, run, 'normalized_2.fastq'))
         else:
             print(err_message)
     
@@ -519,7 +519,7 @@ if __name__ == '__main__':
     print('Generating bigwig file from bam file...')
     bam_dir = path.join(args.outdir, args.name, 'output.sorted.bam')
     bigwig_dir = path.join(args.outdir, args.name, 'output.bigwig')
-    subprocess.run(['python3', 'bam_to_bigwig.py', bam_dir, '-o', bigwig_dir])
+    subprocess.run(['python3', get_bam_to_bigwig_path(), bam_dir, '-o', bigwig_dir])
     # rename bam and bigwig file to [gggsss]_[assembly_name]_RNA-Seq-alignments_[datetime]
     temp = scientific_names[0].split(" ")
     gene_name = temp[0]
@@ -529,7 +529,7 @@ if __name__ == '__main__':
     os.rename(path.join(args.outdir, args.name, 'output.sorted.bam.bai'), path.join(args.outdir, args.name, new_name + '.bam.bai'))
     os.rename(path.join(args.outdir, args.name, 'output.bigwig'), path.join(args.outdir, args.name, new_name + '.bigwig'))
     # generate bed file
-    subprocess.run(['regtools', 'junctions', 'extract', '-m', '20', '-s', '0', '-o', path.join(args.outdir, args.name, new_name + '.bed'), path.join(args.outdir, args.name, new_name + '.bam')])
+    subprocess.run([get_regtools_path(), 'junctions', 'extract', '-m', '20', '-s', '0', '-o', path.join(args.outdir, args.name, new_name + '.bed'), path.join(args.outdir, args.name, new_name + '.bam')])
     #  remove intermediate files
     if not args.tempFile:
         os.remove(path.join(args.outdir, args.name, 'output.bam'))
