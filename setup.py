@@ -12,7 +12,7 @@ lib_dir = join(project_root, 'rnannot', 'lib')
 
 if not exists(lib_dir):
     mkdir(lib_dir)
-'''
+
 print('Downloading fastQC ...')
 urlretrieve(
     'https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.7.zip',
@@ -108,7 +108,7 @@ files = [
 ]
 for f in files:
     remove(join(lib_dir, f))
-'''
+
 setup(
     name='rnannot',
     version='0.0.1',
