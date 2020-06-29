@@ -121,11 +121,9 @@ optional arguments:
 - https://scinet.usda.gov/guide/conda/
 - Used conda to create an new env.
 - Package Entrez-direct and Pysam are not included in the module list of Ceres. Use conda to install them into env. (Python3 and Perl5 may be insatlled into env at the same time)
-- Git clone regtools and build it into env (https://regtools.readthedocs.io/en/latest/). Add path to bashrc.
 
-**2. Git clone RNA_annotation_pipeline and bam_to_bigwig into working directory**
+**2. Git clone RNA_annotation_pipeline into working directory**
 - Git clone branch update-rnannot from this repo.
-- Git clone branch python3_version from bam_to_bigwig repo (https://github.com/NAL-i5K/bam_to_bigwig.git) and copy bam_to_bigwig.py into rnannot folder.
 - Use wget to download wigToBigWig (http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/wigToBigWig) and add it into PATH.
 
 **3. Activate conda env**
