@@ -1,11 +1,11 @@
 #!/bin/sh
-#SBATCH -p short
+#SBATCH -p medium
 #SBATCH -N 1
 #SBATCH --cpus-per-task=24
 #SBATCH --mem-per-cpu=8G
 #SBATCH --mail-type=end          # send email when job ends
 #SBATCH --mail-type=fail         # send email if job fails
-#SBATCH --mail-user=<your email address>
+#SBATCH --mail-user=<k2025242322@gmail.com>
 echo $(date)
 echo "load moudle java, sratoolkit, samtools and rsem"
 module load java sratoolkit samtools rsem
@@ -22,7 +22,15 @@ python3 RNAseq_annotate.py -i 1049336.tsv -g Edan07162013.scaffolds.fa.gz -a Eda
 python3 download_sra_metadata.py -t 7460 -o 7460.tsv
 python3 RNAseq_annotate.py -i 7460.tsv -g GCF_000002195.4_Amel_4.5_genomic.fna.gz -a Amel_4.5 -t
 
-#Example 3
+#Example 3 - process 2 SRR files at most and remove intermediate files
 python3 download_sra_metadata.py -t 7070 -o 7070.tsv
-python3 RNAseq_annotate.py -i 7070.tsv -g GCF_000002335.3_Tcas5.2_genomic_RefSeqIDs.fna.gz -a Tcas5.2 -t
+python3 RNAseq_annotate.py -i 7070.tsv -g GCF_000002335.3_Tcas5.2_genomic_RefSeqIDs.fna.gz -a Tcas5.2 -m 2
+
+#Example 4
+python3 download_sra_metadata.py -t 486640 -o 486640.tsv
+python3 RNAseq_annotate.py -i 486640.tsv -g GCF_010583005.1_Obru_v1_genomic.fna.gz -a Obru_v1 -t
+
+#Example 5 
+python3 download_sra_metadata.py -t 92692 -o 92692.tsv
+python3 RNAseq_annotate.py -i 92692.tsv -g _____RdoDt3_Drdd8_decomES.fasta -a RdoDt3 -t
 echo $(date)

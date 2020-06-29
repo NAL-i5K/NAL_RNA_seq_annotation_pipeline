@@ -12,6 +12,7 @@ from itertools import islice
 from six.moves import urllib
 import datetime
 import random
+import glob
 
 def run_pipeline(run, genome, outdir, layout, platform, model):
     # create the output folder
@@ -541,5 +542,13 @@ if __name__ == '__main__':
             os.remove(path.join(args.outdir, args.name, 'paired_output.sam'))
         if path.exists(path.join(args.outdir, args.name, 'paired_output.bam')):
             os.remove(path.join(args.outdir, args.name, 'paired_output.bam'))
+        if path.exists(path.join(args.outdir, args.name,'merged_normalized_1.fastq')):
+            os.remove(path.join(args.outdir, args.name,'merged_normalized_1.fastq'))
+            os.remove(path.join(args.outdir, args.name,'merged_normalized_2.fastq'))
+        if path.exists(path.join(args.outdir, args.name,'merged_normalized.fastq')):
+            os.remove(path.join(args.outdir, args.name,'merged_normalized.fastq'))
+        hs2_filelist = glob.glob(path.join(args.outdir, args.name,'GCF_000002335.3_Tcas5.2_genomic_RefSeqIDs.fna.*'))
+        for hs2_file in hs2_filelist:
+            os.remove(hs2_file)
     print('Finished processing')
     
