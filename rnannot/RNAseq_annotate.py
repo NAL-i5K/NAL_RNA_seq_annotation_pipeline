@@ -547,8 +547,20 @@ if __name__ == '__main__':
             os.remove(path.join(args.outdir, args.name,'merged_normalized_2.fastq'))
         if path.exists(path.join(args.outdir, args.name,'merged_normalized.fastq')):
             os.remove(path.join(args.outdir, args.name,'merged_normalized.fastq'))
-        hs2_filelist = glob.glob(path.join(args.outdir, args.name,'GCF_000002335.3_Tcas5.2_genomic_RefSeqIDs.fna.*'))
+        hs2_filelist = glob.glob(path.join(args.outdir, args.name, genome_file_name + '.*'))
         for hs2_file in hs2_filelist:
             os.remove(hs2_file)
+        # remove fastq files in SRR subdirectories
+        for run in runs:
+            os.remove(path.join(args.outdir, args.name, run, 'output.fastq'))
+            os.remove(path.join(args.outdir, args.name, run, 'normalized.fastq'))
+            if path.exists(path.join(args.outdir, args.name, run, run + '_1.fastq')):
+                os.remove(path.join(args.outdir, args.name, run, run + '_1.fastq'))
+                os.remove(path.join(args.outdir, args.name, run, run + '_1_fastqc.zip'))
+                shutil.rmtree(path.join(args.outdir, args.name, run, run + '_1_fastqc'))
+            if path.exists(path.join(args.outdir, args.name, run, run + '_2.fastq')):
+                os.remove(path.join(args.outdir, args.name, run, run + '_2.fastq'))
+                os.remove(path.join(args.outdir, args.name, run, run + '_2_fastqc.zip'))
+                shutil.rmtree(path.join(args.outdir, args.name, run, run + '_2_fastqc'))
     print('Finished processing')
-    
+     
