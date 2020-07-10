@@ -16,9 +16,9 @@ matrix:
     - docker build -t rnannot .
     script:
     # run download_sra_metadata.py        
-    - docker run --rm rnannot python3 /opt/RNA_repo/rnannot/download_sra_metadata.py -t 1049336 -o TestOutput_1049336.tsv
+    - docker run --rm rnannot python3 /opt/RNA_repo/rnannot/download_sra_metadata.py -t 559292 -o 559292.tsv
     # run RNAseq_annotate.py
-    - docker run --rm rnannot python3 /opt/RNA_repo/rnannot/RNAseq_annotate.py -i /opt/RNA_repo/example/1049336.tsv -g /opt/RNA_repo/example/Edan07162013.scaffolds.fa.gz -a Edan_2.0 -m 1
+    - docker run --rm rnannot python3 /opt/RNA_repo/rnannot/RNAseq_annotate.py -i /opt/RNA_repo/example/559292.tsv -g /opt/RNA_repo/example/GCF_000146045.2_R64_genomic.fna.gz -a R64 -m 1
   allow_failures:
    - rvm: 2.2
 
