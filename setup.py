@@ -25,7 +25,7 @@ urlretrieve(
 
 print('Downloading HISAT2 ...')
 urlretrieve(
-    'ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat2/downloads/hisat2-2.1.0-Linux_x86_64.zip',
+    'https://cloud.biohpc.swmed.edu/index.php/s/hisat2-210-Linux_x86_64/download',
     join(lib_dir, 'hisat2-2.1.0-Linux_x86_64.zip'))
 
 print('Downloading BBMap ...')
