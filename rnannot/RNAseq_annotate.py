@@ -124,7 +124,7 @@ def run_pipeline(run, genome, outdir, layout, platform, model):
         # Normalizing
         print('Normalizing ...')   
         subprocess.run([get_bbmap_command_path('bbnorm.sh'), 'in1=' + path.join(output_prefix, 'output.fastq'), 
-                        'out=' + path.join(output_prefix, 'normalized.fastq'), 'target=' + '100', 'threads=' + '24'])
+                        'out=' + path.join(output_prefix, 'normalized.fastq'), 'target=' + '100', 'threads=auto'])
         return (True, '', 'single')
 
     elif layout == 'PAIRED':
@@ -241,7 +241,7 @@ def run_pipeline(run, genome, outdir, layout, platform, model):
         # Normalizing
         print('Normalizing ...')
         subprocess.run([get_bbmap_command_path('bbnorm.sh'), 'in1=' + path.join(output_prefix,'output_1.fastq'), 'in2=' + path.join(output_prefix, 'output_2.fastq'),
-                       'out1=' + path.join(output_prefix, 'normalized_1.fastq'), 'out2=' + path.join(output_prefix, 'normalized_2.fastq'), 'target=' + '100', 'threads=' + '24'])
+                       'out1=' + path.join(output_prefix, 'normalized_1.fastq'), 'out2=' + path.join(output_prefix, 'normalized_2.fastq'), 'target=' + '100', 'threads=auto'])
         return (True, '', 'paired')
 
 
@@ -423,7 +423,7 @@ if __name__ == '__main__':
         	stderr=f_stderr)
         subprocess.run(
         	[
-            	get_hisat2_command_path('hisat2'), '--no-mixed', '--no-discordant', '-p', '12', '-x',
+            	get_hisat2_command_path('hisat2'), '--no-mixed', '--no-discordant', '-p', args.threads_num, '-x',
             	path.join(args.outdir, args.name, genome_file_name), '-U',
             	path.join(args.outdir, args.name, 'merged_normalized.fastq'), '-S',
             	path.join(args.outdir, args.name, 'single_output.sam')
@@ -456,7 +456,7 @@ if __name__ == '__main__':
         	path.join(args.outdir, args.name, genome_file_name + '_paired.hisat2.errlog'), 'w')
         subprocess.run(
         	[
-            	get_hisat2_command_path('hisat2'), '--no-mixed', '--no-discordant', '-p', '12', '-x',
+            	get_hisat2_command_path('hisat2'), '--no-mixed', '--no-discordant', '-p', args.threads_num, '-x',
             	path.join(args.outdir, args.name, genome_file_name), '-1',
             	path.join(args.outdir, args.name, 'merged_normalized_1.fastq'), '-2',
             	path.join(args.outdir, args.name, 'merged_normalized_2.fastq'), '-S',
@@ -474,7 +474,7 @@ if __name__ == '__main__':
         	path.join(args.outdir, args.name, genome_file_name + '_single.samtools.errlog'), 'w')
         subprocess.run(
         	[
-            	'samtools', 'sort', '-@', '12', '-o',
+            	'samtools', 'sort', '-@', args.threads_num, '-o',
            	path.join(args.outdir, args.name, 'single_output.bam'), '-O', 'bam', '-T',
            	path.join(args.outdir, args.name, 'single_output'),
             	path.join(args.outdir, args.name, 'single_output.sam') 
@@ -491,7 +491,7 @@ if __name__ == '__main__':
         	path.join(args.outdir, args.name, genome_file_name + '_paired.samtools.errlog'), 'w')
     	subprocess.run(
         	[
-            	'samtools', 'sort', '-@', '12', '-o',
+            	'samtools', 'sort', '-@', args.threads_num, '-o',
             	path.join(args.outdir, args.name, 'paired_output.bam'), '-O', 'bam', '-T',
            	path.join(args.outdir, args.name, 'paired_output'),
             	path.join(args.outdir, args.name, 'paired_output.sam')
@@ -515,7 +515,7 @@ if __name__ == '__main__':
     print('Start sorting bam file...')
     bam_dir = path.join(args.outdir, args.name, 'output.bam')
     output_dir = path.join(args.outdir, args.name, 'output.sorted.bam')
-    subprocess.run(['samtools', 'sort', '-@', '12', bam_dir, '-o', output_dir])
+    subprocess.run(['samtools', 'sort', '-@', args.threads_num, bam_dir, '-o', output_dir])
     # converting dowsampled bam to bigwig (includes indexing bam file)
     print('Generating bigwig file from bam file...')
     bam_dir = path.join(args.outdir, args.name, 'output.sorted.bam')

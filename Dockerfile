@@ -27,7 +27,9 @@ bzip2 \
 #install ncbi-entrez-direct
 ncbi-entrez-direct \
 #install prerequisites for sratoolkit
-libxml2-dev 
+libxml2-dev \
+#install rsem for bam_to_bigWig
+rsem
 
 #cpan prerequisites for sratoolkit
 RUN cpan install -T XML::LibXML && cpan install -T URI
@@ -45,11 +47,20 @@ RUN wget https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/2.10.0/sratoolkit.2.10.0-ubu
   && tar -xf sratoolkit.2.10.0-ubuntu64.tar.gz
 ENV PATH="/sratoolkit.2.10.0-ubuntu64/bin:${PATH}"
 
+# install wigToBigWig
+RUN wget http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/wigToBigWig
+RUN chmod 777 wigToBigWig
+RUN mv wigToBigWig /usr/local/bin/
+ 
 # install pysam
 RUN pip3 install pysam
 
 # echo container env path
 RUN echo $PATH  
+
+# alias python to python3
+RUN echo 'alias python='python3'' >> ~/.bashrc
+RUN /bin/bash -c "source ~/.bashrc" 
 
 # create one folder for storaging repo files
 RUN mkdir /opt/RNA_repo
