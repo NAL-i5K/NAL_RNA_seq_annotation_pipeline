@@ -58,7 +58,8 @@ RUN pip3 install pysam
 # echo container env path
 RUN echo $PATH  
 
-# alias python to python3
+# create symlink to python3 and alias python to python3 
+RUN ln -s /usr/bin/python3 /usr/bin/python
 RUN echo 'alias python='python3'' >> ~/.bashrc
 RUN /bin/bash -c "source ~/.bashrc" 
 
