@@ -557,7 +557,7 @@ if __name__ == '__main__':
                 os.remove(path.join(args.outdir, args.name, run, 'normalized.fastq'))
             if path.exists(path.join(args.outdir, args.name, run, 'output_1.fastq')):
                 os.remove(path.join(args.outdir, args.name, run, 'output_1.fastq'))
-                os.remove(path.join(args.outdir, args.name, run, 'output_1_un.fastq')
+                os.remove(path.join(args.outdir, args.name, run, 'output_1_un.fastq'))
                 os.remove(path.join(args.outdir, args.name, run, 'normalized_1.fastq'))
                 os.remove(path.join(args.outdir, args.name, run, 'output_2.fastq'))
                 os.remove(path.join(args.outdir, args.name, run, 'output_2_un.fastq'))
