@@ -33,7 +33,7 @@ After you set up all of the prerequisites, run setup.py file for installing.
 
 ## Uninstallation
 
-- `pip uninstall rnannot`
+- `pip uninstall rnannot` 
 
 ## Usage
 
@@ -119,6 +119,24 @@ optional arguments:
 - `add_trackList.py -a user@login.scinet.science -p /project/nal_genomics/user-name/NAL_RNA_seq_annotation_pipeline/rnannot/2020-05-20 -bam Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bam -bai Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bam.bai -bigwig Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bigwig -bed Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bed -track /app/data/other_species/tricas/Tcas5.2/jbrowse/data/trackList.json -s Source.txt`
 - `move_data.py -Node1a user@apollo-node1.nal.usda.gov -s SOURCE.txt`
 
+## Run on Docker container
+We provide docker image which includes all of the prerequisites and has everything installed. It also contains the whole repo, so you don't need to clone this repo if you use this docker container. The working directory of this image is set to **/opt/output** and all of the repo files are in **/opt/RNA_repo**
+
+To get this docker image, you can:
+
+1. Build this image by Dockerfile. 
+   clone this repo and run `sudo docker build -t [your_image_tag_name] .`
+   
+   or
+   
+2. Pull this image from docker hub.
+   run `sudo docker pull k2025242322/i5k_rna_seq_annotation_pipeline:latest`
+   
+**run with docker command**   
+- run `sudo docker run --rm --mount type=bind,source=[The directory you would like to bind],target=/opt/output [your_image_tag_name] python3 /opt/RNA_repo/rnannot/download_sra_metadata.py -t [tax_id] -o [tax_id.tsv]`
+- run `wget [genome file URL]` (download your file in the binding directory) or `sudo docker run --rm --mount type=bind,source=[The directory you would like to bind],target=/opt/output [your_image_tag_name] wget [genome file URL]`
+- run `sudo docker run --rm --mount type=bind,source=[The directory you would like to bind],target=/opt/output [your_image_tag_name] python3 /opt/RNA_repo/rnannot/RNAseq_annotate.py -i /opt/output/[tax_id.tsv] -g /opt/output/[genome file] -a [assembly_name]`
+
 ## Run on Ceres (by conda virtual environment)
 **1. Setup conda env**
 - https://scinet.usda.gov/guide/conda/
@@ -146,15 +164,20 @@ find /home/[user_name] -name '*.pyc' -delete
 - Do `sbatch sbatch.sh`
 
 ## Run on Ceres (by singularity container)
+You can find more information about singularity here: https://scinet.usda.gov/guide/singularity
+
 **1. Pull docker image from docker hub**
-- Do `singularity pull docker://k2025242322/i5k_rna_seq_annotation_pipeline`
+- Do `salloc` before you run singularity command
+- Do `SINGULARITY_CACHEDIR=[the directory for storaging blob files] singularity -d build rnannot.img docker://k2025242322/i5k_rna_seq_annotation_pipeline`
+  [the directory for storaging blob files] can not under your home directory. You may not have enough quota for all blob files.  
+
 **2. Edit bash script**
 - Download your genome file by `wget [URL of your genome file]`
 - Edit your command in the sbatch.sh file.
-- Command example:
-  `singularity exec --bind [PATH of the folder you whould like to bind]:/opt/output [.img] python3 /opt/RNA_repo/rnannot/download_sra_metadata.py -t 1049336 -o 1049336.tsv`
-  `wget [URL of your genome file]` (File will be downloaded into the directory /opt/output) You also can download your genome file to the folder binding to the container.
-  `singularity exec --bind [PATH of the folder you whould like to bind]:/opt/output [.img] python3 /opt/RNA_repo/rnannot/NAseq_annotate.py -i /opt/output/1049336.tsv -g /opt/output/Edan07162013.scaffolds.fa.gz -a Edan`
+- example:
+- `singularity exec [the PATH of rnannot.img] python3 /opt/RNA_repo/rnannot/download_sra_metadata.py -t 1049336 -o 1049336.tsv`
+- `wget [URL of your genome file]`
+- `singularity exec [the PATH of rnannot.img] python3 /opt/RNA_repo/rnannot/NAseq_annotate.py -i 1049336.tsv -g Edan07162013.scaffolds.fa.gz -a Edan`
   
 ## Notes
 
