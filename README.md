@@ -132,7 +132,7 @@ To get this docker image, you can:
 2. Pull this image from docker hub.
    run `sudo docker pull k2025242322/i5k_rna_seq_annotation_pipeline:latest`
    
-**run with docker command**   
+**Docker commands:**   
 - run `sudo docker run --rm --mount type=bind,source=[The directory you would like to bind],target=/opt/output [your_image_tag_name] python3 /opt/RNA_repo/rnannot/download_sra_metadata.py -t [tax_id] -o [tax_id.tsv]`
 - run `wget [genome file URL]` (download your file in the binding directory) or `sudo docker run --rm --mount type=bind,source=[The directory you would like to bind],target=/opt/output [your_image_tag_name] wget [genome file URL]`
 - run `sudo docker run --rm --mount type=bind,source=[The directory you would like to bind],target=/opt/output [your_image_tag_name] python3 /opt/RNA_repo/rnannot/RNAseq_annotate.py -i /opt/output/[tax_id.tsv] -g /opt/output/[genome file] -a [assembly_name]`
