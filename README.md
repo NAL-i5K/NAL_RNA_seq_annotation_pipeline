@@ -17,6 +17,8 @@ For rnannot
 - [SRA Toolkit](https://github.com/ncbi/sra-tools)
 - [samtools](https://github.com/samtools/samtools)
 - [bam_to_bigwig(python3-version)](https://github.com/NAL-i5K/bam_to_bigwig.git)
+- resm (prerequisite of bam_to_bigwig)
+- wigToBigWig (prerequisite of bam_to_bigwig)
 - regtools (https://regtools.readthedocs.io/en/latest/)
 
 For add_trackList
@@ -24,8 +26,9 @@ For add_trackList
 - add-bw-track.pl
 - flatfile-to-json.pl
 
-## Installation
+## Installation by yourself
 
+After you set up all of the prerequisites, run setup.py file for installing. 
 - `python setup.py install`. It will install a copy of FastQC, Trimmomatic, HISAT2, GATK3, and picard in this python package. You may need to add `--user` in arguments.
 
 ## Uninstallation
@@ -116,11 +119,14 @@ optional arguments:
 - `add_trackList.py -a user@login.scinet.science -p /project/nal_genomics/user-name/NAL_RNA_seq_annotation_pipeline/rnannot/2020-05-20 -bam Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bam -bai Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bam.bai -bigwig Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bigwig -bed Tricas_Tcas5.2_RNA-Seq-alignments_2020-05-20.bed -track /app/data/other_species/tricas/Tcas5.2/jbrowse/data/trackList.json -s Source.txt`
 - `move_data.py -Node1a user@apollo-node1.nal.usda.gov -s SOURCE.txt`
 
-## Run on Ceres
+## Run on Ceres (by conda virtual environment)
 **1. Setup conda env**
 - https://scinet.usda.gov/guide/conda/
 - Used conda to create an new env.
 - Package Entrez-direct and Pysam are not included in the module list of Ceres. Use conda to install them into env. (Python3 and Perl5 may be insatlled into env at the same time)
+
+We also provide a conda venv which is ready to be used. If you don't want to create your conda env, you can skip step1~4 and run the following command.
+- `module load minicanda` and `conda activate /lustre/project/nal_genomics/hsiukang/rnannot_venv`
 
 **2. Git clone RNA_annotation_pipeline into working directory**
 - Git clone branch update-rnannot from this repo.
@@ -135,8 +141,21 @@ optional arguments:
 find /home/[user_name] -name '*.pyc' -delete
 
 **5. Use bash script to submit job**
-- `sbatch sbatch.sh`
+- Download your genome file by `wget [URL of your genome file]`
+- Edit your command in the sbatch.sh file.
+- Do `sbatch sbatch.sh`
 
+## Run on Ceres (by singularity container)
+**1. Pull docker image from docker hub**
+- Do `singularity pull docker://k2025242322/i5k_rna_seq_annotation_pipeline`
+**2. Edit bash script**
+- Download your genome file by `wget [URL of your genome file]`
+- Edit your command in the sbatch.sh file.
+- Command example:
+  `singularity exec --bind [PATH of the folder you whould like to bind]:/opt/output [.img] python3 /opt/RNA_repo/rnannot/download_sra_metadata.py -t 1049336 -o 1049336.tsv`
+  `wget [URL of your genome file]` (File will be downloaded into the directory /opt/output) You also can download your genome file to the folder binding to the container.
+  `singularity exec --bind [PATH of the folder you whould like to bind]:/opt/output [.img] python3 /opt/RNA_repo/rnannot/NAseq_annotate.py -i /opt/output/1049336.tsv -g /opt/output/Edan07162013.scaffolds.fa.gz -a Edan`
+  
 ## Notes
 
 - The input tsv should have at least five columns, including `Run`, `Platform`, `Model`, `LibraryLayout` (header must be presented), and `download_path`.
