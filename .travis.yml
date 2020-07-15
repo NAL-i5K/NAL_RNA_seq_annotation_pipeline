@@ -10,10 +10,15 @@ matrix:
     - awesome_bot --allow-redirect --allow-dupe README.md
   - language: python
     python: 3.5
-    before_script:
-    - python setup.py install
+    services:
+    - docker
+    install:
+    - docker build -t rnannot .
     script:
-    - pip list
+    # run download_sra_metadata.py        
+    - docker run --rm rnannot python3 /opt/RNA_repo/rnannot/download_sra_metadata.py -t 559292 -o 559292.tsv
+    # run RNAseq_annotate.py
+    - docker run --rm rnannot python3 /opt/RNA_repo/rnannot/RNAseq_annotate.py -i /opt/RNA_repo/example/559292-1980743.tsv -g /opt/RNA_repo/example/GCF_000146045.2_R64_genomic.fna.gz -a R64 -T 1
   allow_failures:
    - rvm: 2.2
 
