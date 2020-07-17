@@ -145,6 +145,7 @@ To get this docker image, you can:
 
 We also provide a conda venv which is ready to be used. If you don't want to create your conda env, you can skip step1~4 and run the following command.
 - `module load minicanda` and `conda activate /lustre/project/nal_genomics/hsiukang/rnannot_venv`
+- Note that you may need to specify the full path of the command for it to work. 
 
 **2. Git clone RNA_annotation_pipeline into working directory**
 
