@@ -15,22 +15,22 @@ echo "module list"
 module list
 echo "start processing..."
 #Example 1
-python3 download_sra_metadata.py -t 1049336 -o 1049336.tsv
-python3 RNAseq_annotate.py -i 1049336.tsv -g Edan07162013.scaffolds.fa.gz -a Edan_2.0 -t
+download_sra_metadata.py -t 1049336 -o 1049336.tsv
+RNAseq_annotate.py -i 1049336.tsv -g Edan07162013.scaffolds.fa.gz -a Edan_2.0 -t
 
 #Example 2
-python3 download_sra_metadata.py -t 7460 -o 7460.tsv
-python3 RNAseq_annotate.py -i 7460.tsv -g GCF_000002195.4_Amel_4.5_genomic.fna.gz -a Amel_4.5 -t
+download_sra_metadata.py -t 7460 -o 7460.tsv
+RNAseq_annotate.py -i 7460.tsv -g GCF_000002195.4_Amel_4.5_genomic.fna.gz -a Amel_4.5 -t
 
 #Example 3 - process 2 SRR files at most and remove intermediate files
-python3 download_sra_metadata.py -t 7070 -o 7070.tsv
-python3 RNAseq_annotate.py -i 7070.tsv -g GCF_000002335.3_Tcas5.2_genomic_RefSeqIDs.fna.gz -a Tcas5.2 -m 2
+download_sra_metadata.py -t 7070 -o 7070.tsv
+RNAseq_annotate.py -i 7070.tsv -g GCF_000002335.3_Tcas5.2_genomic_RefSeqIDs.fna.gz -a Tcas5.2 -m 2
 
 #Example 4
-python3 download_sra_metadata.py -t 486640 -o 486640.tsv
-python3 RNAseq_annotate.py -i 486640.tsv -g GCF_010583005.1_Obru_v1_genomic.fna.gz -a Obru_v1 -t
+download_sra_metadata.py -t 486640 -o 486640.tsv
+RNAseq_annotate.py -i 486640.tsv -g GCF_010583005.1_Obru_v1_genomic.fna.gz -a Obru_v1 -t
 
 #Example 5 
-python3 download_sra_metadata.py -t 92692 -o 92692.tsv
-python3 RNAseq_annotate.py -i 92692.tsv -g _____RdoDt3_Drdd8_decomES.fasta -a RdoDt3 -t
+download_sra_metadata.py -t 92692 -o 92692.tsv
+RNAseq_annotate.py -i 92692.tsv -g _____RdoDt3_Drdd8_decomES.fasta -a RdoDt3 -t
 echo $(date)

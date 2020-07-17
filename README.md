@@ -147,8 +147,6 @@ We also provide a conda venv which is ready to be used. If you don't want to cre
 - `module load minicanda` and `conda activate /lustre/project/nal_genomics/hsiukang/rnannot_venv`
 
 **2. Git clone RNA_annotation_pipeline into working directory**
-- Git clone branch update-rnannot from this repo.
-- Use wget to download wigToBigWig (http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/wigToBigWig) and add it into PATH.
 
 **3. Activate conda env**
 - Do `module load minicanda` and `conda activate [env_name]`
