@@ -281,7 +281,7 @@ def read_sam_errors(file_path):
     return (errors, warns)
 
 if __name__ == '__main__':
-    
+    print("new")    
     # parse the arguments, exclude the script name
     args = parse_args(argv[1:])
     # convert many arguments to absolute path
@@ -525,7 +525,10 @@ if __name__ == '__main__':
     temp = scientific_names[0].split(" ")
     gene_name = temp[0]
     species_name = temp[1]
-    new_name = gene_name[0:3] + species_name[0:3]  + '_' + args.assembly + '_RNA-Seq-alignments_' + date
+    if not args.Run_prefix:
+        new_name = gene_name[0:3] + species_name[0:3]  + '_' + args.assembly + '_RNA-Seq-alignments_' + date
+    if args.Run_prefix:
+        new_name = runs[0]
     os.rename(path.join(args.outdir, args.name, 'output.sorted.bam'), path.join(args.outdir, args.name, new_name + '.bam'))
     os.rename(path.join(args.outdir, args.name, 'output.sorted.bam.bai'), path.join(args.outdir, args.name, new_name + '.bam.bai'))
     os.rename(path.join(args.outdir, args.name, 'output.bigwig'), path.join(args.outdir, args.name, new_name + '.bigwig'))
