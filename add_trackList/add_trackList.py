@@ -44,7 +44,9 @@ gggsss = genus_name[0:3].lower() + species_name[0:3]
 bam_file_date = date
 folder_name = genus_name + '-' + species_name + '-RNA-Seq_' + bam_file_date + '_v1.0'
 new_dir_path = path.join('/app/data/other_species', gggsss, assembly_name, 'scaffold', 'analyses', folder_name)
-os.makedirs(new_dir_path)
+if not path.exists(new_dir_path):
+    print('Create a symlink')
+    os.makedirs(new_dir_path)
 
 #cp files to new directory
 print('copy RNA-annotation output files to scaffold/analyses folder ...')
