@@ -45,7 +45,7 @@ bam_file_date = date
 folder_name = genus_name + '-' + species_name + '-RNA-Seq_' + bam_file_date + '_v1.0'
 new_dir_path = path.join('/app/data/other_species', gggsss, assembly_name, 'scaffold', 'analyses', folder_name)
 if not path.exists(new_dir_path):
-    print('Create a symlink')
+    print('Create a folder')
     os.makedirs(new_dir_path)
 
 #cp files to new directory
