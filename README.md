@@ -65,7 +65,7 @@ optional arguments:
                         name of the output folder, if not specified, use the
                         time of start
   -o [OUTDIR], --outdir [OUTDIR]
-                        directory of output folder at, if not specified, use
+                        directory of output folder - it must already exit. if not specified, use
                         current folder
   -a ASSEMBLY, --assembly ASSEMBLY
                         The assembly name is used for naming output file
