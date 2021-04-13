@@ -5,11 +5,11 @@
 #SBATCH --mem-per-cpu=8G
 #SBATCH --mail-type=end          # send email when job ends
 #SBATCH --mail-type=fail         # send email if job fails
-#SBATCH --mail-user=<k2025242322@gmail.com>
+#SBATCH --mail-user=<YOUREMAIL@email.com>
 echo $(date)
-echo "load moudle java, sratoolkit, samtools and rsem"
-module load java sratoolkit samtools rsem
-echo "unload moudle python3 and perl"
+echo "load module java, sratoolkit, samtools, rsem, kentutils"
+module load java sratoolkit samtools rsem kentutils
+echo "unload module perl"
 module unload perl # We need to use the Perl that installed in our env
 echo "module list"
 module list
