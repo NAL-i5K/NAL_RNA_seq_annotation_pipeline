@@ -78,13 +78,13 @@ data_source_runs = []
 for run in Submission:
     data_source_runs.append("<a href='https://www.ncbi.nlm.nih.gov/sra/?term=" + run + "'>" + run + "</a>")
 metadata = '{"metadata":{"Analysis provider": "i5k Workspace@NAL",\n"Analysis method": "https://github.com/NAL-i5K/NAL_RNA_seq_annotation_pipeline/",\n"Data source":"' + ','.join(data_source_runs) + '",\n"Publication status":"Analysis: NA; Source data: see individual SRA accessions",\n"Track legend":"Dark red alignments: Mapped portion of read aligned to forward strand<br>Light red alignments: Spliced portion of read aligned to forward strand<br>Dark blue alignments: Mapped portion of read aligned to reverse strand<br>Light blue alignments: Spliced portion of read aligned to reverse strand<br>Red marking - deletion in the read relative to the reference<br>Green marking - insertion in the read relative to the reference<br>Yellow marking  - mismatch (hover over the mismatch to see what the snp is)"}, "type": "WebApollo\/View\/Track\/DraggableAlignments" }'
-proc_bam = subprocess.Popen(['singularity', 'exec', args.jbrowse_path, 'add-bam-track.pl', '-i', args.input_track, '-o', args.input_track, '--bam_url', path.join('analyses', folder_name, args.input_bam), '--label', label, '--category', 'RNA-Seq/Mapped Reads', '--config', metadata])
+proc_bam = subprocess.Popen(['singularity', 'exec', args.jbrowse_path, 'add-bam-track.pl', '-i', args.input_track, '-o', args.input_track, '--bam_url', path.join('analyses', folder_name, bam), '--label', label, '--category', 'RNA-Seq/Mapped Reads', '--config', metadata])
 proc_bam.communicate()
 
 #add bigwig to trackList
 print('add bigwig to trackList ...')
 metadata = '{"metadata":{"Analysis provider": "i5k Workspace@NAL",\n"Analysis method": "https://github.com/NAL-i5K/NAL_RNA_seq_annotation_pipeline/",\n"Data source":"' + ','.join(data_source_runs) + '",\n"Publication status":"Analysis: NA; Source data: see individual SRA accessions",\n"Track legend":"This track represents an X-Y plot of RNA-Seq coverage."} }'
-proc_bw = subprocess.Popen(['singularity', 'exec', args.jbrowse_path, 'add-bw-track.pl', '-i', args.input_track, '-o', args.input_track, '--bw_url', path.join('analyses', folder_name, args.input_bigwig), '--label', label + '_coverage', '--plot', '--category', 'RNA-Seq/Coverage Plots', '--pos_color', "#00BFFF", '--config', metadata])
+proc_bw = subprocess.Popen(['singularity', 'exec', args.jbrowse_path, 'add-bw-track.pl', '-i', args.input_track, '-o', args.input_track, '--bw_url', path.join('analyses', folder_name, bigwig), '--label', label + '_coverage', '--plot', '--category', 'RNA-Seq/Coverage Plots', '--pos_color', "#00BFFF", '--config', metadata])
 proc_bw.communicate()
 
 #add juntion reads to trackList
