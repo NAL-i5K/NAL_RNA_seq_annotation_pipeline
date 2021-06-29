@@ -1,6 +1,7 @@
 import subprocess
 import argparse
 import time
+import re
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-t","--taxid", help="your tax_id",type=str)
@@ -13,7 +14,7 @@ proc_esearch = subprocess.Popen(['esearch', '-db', 'taxonomy', '-query' , tax_id
 time.sleep(0.7)
 proc_elink = subprocess.Popen(['elink', '-target', 'sra'], stdin=proc_esearch.stdout, stdout=subprocess.PIPE)
 time.sleep(0.7)
-proc_efilter = subprocess.Popen(['efilter', '-query', 'rna seq[stra] AND Transcriptomic[src] NOT PACBIO_SMRT[platform]'], stdin=proc_elink.stdout, stdout=subprocess.PIPE)
+proc_efilter = subprocess.Popen(['efilter', '-query', 'rna seq[stra] AND Transcriptomic[src] NOT(SINGLE[LibraryLayout] AND ^454+[A-Z ]$[platform]) NOT PACBIO_SMRT[platform]'], stdin=proc_elink.stdout, stdout=subprocess.PIPE)
 time.sleep(0.7)
 proc_efetch = subprocess.Popen(['efetch', '-format', 'runinfo', '-mode', 'xml'], stdin=proc_efilter.stdout, stdout=subprocess.PIPE)
 time.sleep(0.7)
