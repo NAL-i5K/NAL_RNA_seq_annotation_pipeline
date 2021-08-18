@@ -17,11 +17,11 @@ For rnannot
 - [SRA Toolkit](https://github.com/ncbi/sra-tools)
 - [samtools](https://github.com/samtools/samtools)
 - [bam_to_bigwig(python3-version)](https://github.com/NAL-i5K/bam_to_bigwig.git)
-- resm (prerequisite of bam_to_bigwig)
-- wigToBigWig (prerequisite of bam_to_bigwig)
-- regtools (https://regtools.readthedocs.io/en/latest/)
+- [rsem](https://github.com/deweylab/RSEM/releases) (prerequisite of bam_to_bigwig)
+- [wigToBigWig](http://hgdownload.cse.ucsc.edu/admin/exe/) (prerequisite of bam_to_bigwig)
+- [regtools](https://regtools.readthedocs.io/en/latest/)
 
-For add_trackList
+For add_trackList, the following JBrowse processing scripts are needed 
 - add-bam-track.pl
 - add-bw-track.pl
 - flatfile-to-json.pl
