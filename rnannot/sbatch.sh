@@ -7,8 +7,8 @@
 #SBATCH --mail-type=fail         # send email if job fails
 #SBATCH --mail-user=<YOUREMAIL@email.com>
 echo $(date)
-echo "load module java, sratoolkit, samtools, rsem, kentutils"
-module load java sratoolkit samtools rsem kentutils
+echo "load module java, sratoolkit, samtools, rsem, kentutils, edirect"
+module load java sratoolkit samtools rsem kentutils edirect
 echo "unload module perl"
 module unload perl # We need to use the Perl that installed in our env
 echo "module list"

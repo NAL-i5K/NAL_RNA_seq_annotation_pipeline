@@ -20,6 +20,8 @@ For rnannot
 - [rsem](https://github.com/deweylab/RSEM/releases) (prerequisite of bam_to_bigwig)
 - [wigToBigWig](http://hgdownload.cse.ucsc.edu/admin/exe/) (prerequisite of bam_to_bigwig)
 - [regtools](https://regtools.readthedocs.io/en/latest/)
+- [edirect](https://dataguide.nlm.nih.gov/edirect/install.html#edirect-installation)
+
 
 For add_trackList, the following JBrowse processing scripts are needed 
 - add-bam-track.pl
@@ -141,7 +143,7 @@ To get this docker image, you can:
 **1. Setup conda env**
 - https://scinet.usda.gov/guide/conda/
 - Used conda to create an new env.
-- Package Entrez-direct and Pysam are not included in the module list of Ceres. Use conda to install them into env. (Python3 and Perl5 may be insatlled into env at the same time) Entrez-direct: https://anaconda.org/bioconda/entrez-direct Pysam: https://anaconda.org/bioconda/pysam
+- Package Pysam is not included in the module list of Ceres. Use conda to install them into env. (Python3 and Perl5 may be insatlled into env at the same time) Pysam: https://anaconda.org/bioconda/pysam
 
 We also provide a conda venv which is ready to be used. If you don't want to create your conda env, you can skip step1~4 and run the following command.
 - `module load minicanda` and `conda activate /lustre/project/nal_genomics/hsiukang/rnannot_venv`
