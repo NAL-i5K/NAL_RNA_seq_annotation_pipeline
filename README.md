@@ -50,6 +50,17 @@ optional arguments:
   -o [OUTPUT], --output [OUTOUT] directory and name of output folder at, if not specified, use current folder
 
 
+The sra metadata of specified accessions can be downloaded by another script:
+
+download_sra_metadata_by_accessions.py [-a ACCESSION] [-o [OUTPUT]]
+
+The script can process multiple accessions at once.
+
+optional arguments:
+  -a ACCESSION, --accession ACCESSION    find the RNA SRA files for the given accessions
+  -o [OUTPUT], --output [OUTOUT] directory and name of output folder at, if not specified, use current folder
+
+
 RNAseq_annotate.py [-h] [-i INPUT] [-g GENOME] [-n [NAME]]
                                [-o [OUTDIR]] [-a ASSEMBLY] [-t]
                                [-m MAXIMUMSRA]
@@ -114,6 +125,7 @@ optional arguments:
 ## Example
 **Rnannot**
 - `download_sra_metadata.py -t 1049336 -o 1049336.tsv`
+- `download_sra_metadata_by_accessions.py -a SRX12101703 SRX12101702 SRX12101701 -o SRX12101703.tsv SRX12101702.tsv SRX12101701.tsv`
 - `wget "https://i5k.nal.usda.gov/data/Arthropoda/ephdan-(Ephemera_danica)/BCM-After-Atlas/1.Genome%20Assembly/BCM-After-Atlas/Scaffolds/Edan07162013.scaffolds.fa.gz"`
 - `RNAseq_annotate.py -i ./example/1049336.tsv -g ./Edan07162013.scaffolds.fa.gz -a Edan_2.0`
 
