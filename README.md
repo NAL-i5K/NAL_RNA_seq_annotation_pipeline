@@ -50,15 +50,13 @@ optional arguments:
   -o [OUTPUT], --output [OUTOUT] directory and name of output folder at, if not specified, use current folder
 
 
-The sra metadata of specified accessions can be downloaded by another script:
-
 download_sra_metadata_by_accessions.py [-a ACCESSION] [-o [OUTPUT]]
 
-The script can process multiple accessions at once.
+Substitute the taxid argument with the accession argument, and download the sra metadata of only specified accessions. The output file will be used for the input file of RNAseq_annotate.py. If processing multiple accessions, use spaces between each accession and output file directory.
 
 optional arguments:
   -a ACCESSION, --accession ACCESSION    find the RNA SRA files for the given accessions
-  -o [OUTPUT], --output [OUTOUT] directory and name of output folder at, if not specified, use current folder
+  -o [OUTPUT], --output [OUTOUT]    output directory and output file name, if not specified, use current folder and file name "ACCESSION.tsv"
 
 
 RNAseq_annotate.py [-h] [-i INPUT] [-g GENOME] [-n [NAME]]
