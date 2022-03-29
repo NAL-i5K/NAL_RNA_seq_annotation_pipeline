@@ -69,7 +69,8 @@ shutil.copyfile(args.input_bed, path.join(new_dir_path, bed))
 #    os.symlink(src_dir, dst_dir)
 
 #backup trackList in apollo directory
-shutil.copyfile(path.join(args.output_path, gggsss, assembly_name, 'jbrowse/data', 'trackList.json'), path.join(args.output_path, gggsss, assembly_name, 'jbrowse/data', 'trackList.json.bak'))
+baktrack = (args.input_track, 'bak')
+shutil.copyfile(args.input_track, '.'.join(baktrack))
 
 #add bam to trackList
 print('add bam to trackList ...')
