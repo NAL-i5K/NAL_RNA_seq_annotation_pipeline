@@ -194,6 +194,8 @@ You can find more information about singularity here: https://scinet.usda.gov/gu
   
 ## Notes
 
+- To use fastq-dump on a fresh install, you need to enable remote access in the sratoolkit configuration.(https://ncbi.github.io/sra-tools/install_config.html)
+  - Run `vdb-config -i` - this should open up an interactive shell. Press 'M' to go to main page. Then, press 'E' to enable it. Last, press 's' and 'x' to save and exit configuration page.
 - The input tsv should have at least five columns, including `Run`, `Platform`, `Model`, `LibraryLayout` (header must be presented), and `download_path`.
   - `Run` column represents the paths to the SRA files. You can use either relative path to your current directory or absolute path. To make less confusion, we recommned to use absolute path.
   - `Platform` column represents the sequencer's brand. We will recognize `ILLUMINA` and `ABI_SOLID` (although we will not process `ABI_SOLID`) in this field, because it determines the adapters used in the pipeline with `Model`.
