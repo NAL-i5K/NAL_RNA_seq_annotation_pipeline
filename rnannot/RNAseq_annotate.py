@@ -516,6 +516,7 @@ if __name__ == '__main__':
     bam_dir = path.join(args.outdir, args.name, 'output.bam')
     output_dir = path.join(args.outdir, args.name, 'output.sorted.bam')
     subprocess.run(['samtools', 'sort', '-@', args.threads_num, bam_dir, '-o', output_dir])
+    subprocess.run(['samtools', 'index', '-c@', args.threads_num, output_dir]) #Creating a .csi index immediately so that bam_to_bigwig.py doesn't try to make a .bai index
     # converting dowsampled bam to bigwig (includes indexing bam file)
     print('Generating bigwig file from bam file...')
     bam_dir = path.join(args.outdir, args.name, 'output.sorted.bam')
@@ -530,7 +531,7 @@ if __name__ == '__main__':
     if args.Run_prefix:
         new_name = runs[0]
     os.rename(path.join(args.outdir, args.name, 'output.sorted.bam'), path.join(args.outdir, args.name, new_name + '.bam'))
-    os.rename(path.join(args.outdir, args.name, 'output.sorted.bam.bai'), path.join(args.outdir, args.name, new_name + '.bam.bai'))
+    os.rename(path.join(args.outdir, args.name, 'output.sorted.bam.csi'), path.join(args.outdir, args.name, new_name + '.bam.csi')) #Changed from .bai to .csi
     os.rename(path.join(args.outdir, args.name, 'output.bigwig'), path.join(args.outdir, args.name, new_name + '.bigwig'))
     # generate bed file
     subprocess.run([get_regtools_path(), 'junctions', 'extract', '-m', '20', '-s', '0', '-o', path.join(args.outdir, args.name, new_name + '.bed'), path.join(args.outdir, args.name, new_name + '.bam')])
