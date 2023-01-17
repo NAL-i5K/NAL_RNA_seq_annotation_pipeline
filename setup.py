@@ -43,7 +43,7 @@ urlretrieve('https://github.com/broadinstitute/gatk/releases/download/4.1.6.0/ga
     join(lib_dir, 'gatk-4.1.6.0.zip'))
 
 print('Downloading bam_to_bigwig ...')
-subprocess.run(['git', 'clone', '-b', 'python3_version','--single-branch', 'https://github.com/NAL-i5K/bam_to_bigwig.git', join(lib_dir, 'bam_to_bigwig')])
+subprocess.run(['git', 'clone', 'https://github.com/NAL-i5K/bam_to_bigwig.git', join(lib_dir, 'bam_to_bigwig')])
 
 print('Downloading regtools ...')
 subprocess.run(['git', 'clone', 'https://github.com/griffithlab/regtools', join(lib_dir, 'regtools')])
