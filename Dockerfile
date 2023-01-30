@@ -3,6 +3,9 @@ FROM ubuntu:latest
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install --yes \
+# install text editors
+nano \
+vim \
 # install python3
 python3 \
 python3-pip \
@@ -35,12 +38,12 @@ rsem
 RUN cpan install -T XML::LibXML && cpan install -T URI
 
 # install samtools
-RUN wget https://github.com/samtools/samtools/releases/download/1.9/samtools-1.9.tar.bz2 \
-  && bunzip2 -q samtools-1.9.tar.bz2 \
-  && tar -xf samtools-1.9.tar \
-  && cd samtools-1.9 \
+RUN wget https://github.com/samtools/samtools/releases/download/1.16.1/samtools-1.16.1.tar.bz2 \
+  && bunzip2 -q samtools-1.16.1.tar.bz2 \
+  && tar -xf samtools-1.16.1.tar \
+  && cd samtools-1.16.1 \
   && make
-ENV PATH="/samtools-1.9:${PATH}"
+ENV PATH="/samtools-1.16.1:${PATH}"
 
 # install sratoolkit
 RUN wget https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/2.10.0/sratoolkit.2.10.0-ubuntu64.tar.gz \
