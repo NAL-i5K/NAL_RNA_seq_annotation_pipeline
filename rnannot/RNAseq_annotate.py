@@ -423,7 +423,7 @@ if __name__ == '__main__':
         	stderr=f_stderr)
         subprocess.run(
         	[
-            	get_hisat2_command_path('hisat2'), '--no-mixed', '--no-discordant', '-p', args.threads_num, '-x',
+            	get_hisat2_command_path('hisat2'), '--dta-cufflinks', '--no-mixed', '--no-discordant', '-p', args.threads_num, '-x',
             	path.join(args.outdir, args.name, genome_file_name), '-U',
             	path.join(args.outdir, args.name, 'merged_normalized.fastq'), '-S',
             	path.join(args.outdir, args.name, 'single_output.sam')
@@ -456,7 +456,7 @@ if __name__ == '__main__':
         	path.join(args.outdir, args.name, genome_file_name + '_paired.hisat2.errlog'), 'w')
         subprocess.run(
         	[
-            	get_hisat2_command_path('hisat2'), '--no-mixed', '--no-discordant', '-p', args.threads_num, '-x',
+            	get_hisat2_command_path('hisat2'), '--dta-cufflinks', '--no-mixed', '--no-discordant', '-p', args.threads_num, '-x',
             	path.join(args.outdir, args.name, genome_file_name), '-1',
             	path.join(args.outdir, args.name, 'merged_normalized_1.fastq'), '-2',
             	path.join(args.outdir, args.name, 'merged_normalized_2.fastq'), '-S',
@@ -534,7 +534,7 @@ if __name__ == '__main__':
     os.rename(path.join(args.outdir, args.name, 'output.sorted.bam.csi'), path.join(args.outdir, args.name, new_name + '.bam.csi')) #Changed from .bai to .csi
     os.rename(path.join(args.outdir, args.name, 'output.bigwig'), path.join(args.outdir, args.name, new_name + '.bigwig'))
     # generate bed file
-    subprocess.run([get_regtools_path(), 'junctions', 'extract', '-m', '20', '-s', '0', '-o', path.join(args.outdir, args.name, new_name + '.bed'), path.join(args.outdir, args.name, new_name + '.bam')])
+    subprocess.run([get_regtools_path(), 'junctions', 'extract', '-m', '20', '-s', 'XS', '-o', path.join(args.outdir, args.name, new_name + '.bed'), path.join(args.outdir, args.name, new_name + '.bam')])
     #  remove intermediate files
     if not args.tempFile:
         os.remove(path.join(args.outdir, args.name, 'output.bam'))
