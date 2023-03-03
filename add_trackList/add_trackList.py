@@ -12,7 +12,7 @@ parser.add_argument("-op","--output_path", help="path of gggsss directory where 
 parser.add_argument("-j","--jbrowse_path", help="path of jbrowse container on Scinet",type=str)             
 parser.add_argument("-bam","--input_bam", help="bam file name",type=str)
 parser.add_argument("-bigwig","--input_bigwig", help="bigwig file name",type=str)
-parser.add_argument("-bai","--input_bai", help="indexed bam file name",type=str)
+parser.add_argument("-csi","--input_csi", help="indexed bam file name, csi format",type=str)
 parser.add_argument("-bed","--input_bed", help="indexed bed file name",type=str)
 parser.add_argument("-track","--input_track", help="trackList.json file path",type=str)
 parser.add_argument("-s","--Source", help="Source.txt file name",type=str)
@@ -54,11 +54,11 @@ if not path.exists(new_dir_path):
 print('copy RNA-annotation output files to scaffold/analyses folder ...')
 bam = os.path.basename(args.input_bam)
 bigwig = os.path.basename(args.input_bigwig)
-bai = os.path.basename(args.input_bai)
+csi = os.path.basename(args.input_csi)
 bed = os.path.basename(args.input_bed)
 shutil.copyfile(args.input_bam, path.join(new_dir_path, bam))
 shutil.copyfile(args.input_bigwig, path.join(new_dir_path, bigwig))
-shutil.copyfile(args.input_bai, path.join(new_dir_path, bai))
+shutil.copyfile(args.input_csi, path.join(new_dir_path, csi))
 shutil.copyfile(args.input_bed, path.join(new_dir_path, bed))
 
 #create symlink to bam, indexed and bigwig files
@@ -78,7 +78,8 @@ label = os.path.splitext(os.path.basename(args.input_bam))[0]
 data_source_runs = []
 for run in Submission:
     data_source_runs.append("<a href='https://www.ncbi.nlm.nih.gov/sra/?term=" + run + "'>" + run + "</a>")
-metadata = '{"unsafePopup": true, "metadata":{"Analysis provider": "i5k Workspace@NAL",\n"Analysis method": "https://github.com/NAL-i5K/NAL_RNA_seq_annotation_pipeline/",\n"Data source":"' + ','.join(data_source_runs) + '",\n"Publication status":"Analysis: NA; Source data: see individual SRA accessions",\n"Track legend":"Dark red alignments: Mapped portion of read aligned to forward strand<br>Light red alignments: Spliced portion of read aligned to forward strand<br>Dark blue alignments: Mapped portion of read aligned to reverse strand<br>Light blue alignments: Spliced portion of read aligned to reverse strand<br>Red marking - deletion in the read relative to the reference<br>Green marking - insertion in the read relative to the reference<br>Yellow marking  - mismatch (hover over the mismatch to see what the snp is)"}, "type": "WebApollo\/View\/Track\/DraggableAlignments" }'
+csi_path = path.join('analyses', folder_name, csi)
+metadata = '{"csiUrlTemplate":"' + csi_path + '", "unsafePopup": true, "metadata":{"Analysis provider": "i5k Workspace@NAL",\n"Analysis method": "https://github.com/NAL-i5K/NAL_RNA_seq_annotation_pipeline/",\n"Data source":"' + ','.join(data_source_runs) + '",\n"Publication status":"Analysis: NA; Source data: see individual SRA accessions",\n"Track legend":"Dark red alignments: Mapped portion of read aligned to forward strand<br>Light red alignments: Spliced portion of read aligned to forward strand<br>Dark blue alignments: Mapped portion of read aligned to reverse strand<br>Light blue alignments: Spliced portion of read aligned to reverse strand<br>Red marking - deletion in the read relative to the reference<br>Green marking - insertion in the read relative to the reference<br>Yellow marking  - mismatch (hover over the mismatch to see what the snp is)"}, "type": "WebApollo\/View\/Track\/DraggableAlignments" }'
 proc_bam = subprocess.Popen(['singularity', 'exec', args.jbrowse_path, 'add-bam-track.pl', '-i', args.input_track, '-o', args.input_track, '--bam_url', path.join('analyses', folder_name, bam), '--label', label, '--category', 'RNA-Seq/Mapped Reads', '--config', metadata])
 proc_bam.communicate()
 
