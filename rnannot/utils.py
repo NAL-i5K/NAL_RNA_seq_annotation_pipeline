@@ -5,7 +5,7 @@ def get_lib_path():
 
 
 def get_trimmomatic_jar_path():
-    return path.join(get_lib_path(), 'Trimmomatic-0.38', 'trimmomatic-0.38.jar')
+    return path.join(get_lib_path(), 'Trimmomatic-0.39', 'trimmomatic-0.39.jar')
 
 
 def get_fastqc_path():
@@ -13,7 +13,7 @@ def get_fastqc_path():
 
 
 def get_trimmomatic_adapter_path(file_name):
-    return path.join(get_lib_path(), 'Trimmomatic-0.38', 'adapters', file_name)
+    return path.join(get_lib_path(), 'Trimmomatic-0.39', 'adapters', file_name)
 
 
 def get_bbmap_adapter_path():
@@ -29,7 +29,7 @@ def get_bbmap_command_path(cmd):
 
 
 def get_gatk_jar_path():
-    return path.join(get_lib_path(), 'GenomeAnalysisTK.jar')
+    return path.join(get_lib_path(), 'gatk-4.4.0.0','gatk')
 
 
 def get_picard_jar_path():
