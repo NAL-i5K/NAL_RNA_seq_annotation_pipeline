@@ -1,0 +1,1 @@
+java -jar /opt/RNA_repo/rnannot/lib/Trimmomatic-0.39/trimmomatic-0.39.jar $@
