@@ -1,0 +1,1 @@
+java -jar /opt/RNA_repo/rnannot/lib/picard.jar $@
