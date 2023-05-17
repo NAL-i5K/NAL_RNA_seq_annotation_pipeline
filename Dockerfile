@@ -14,7 +14,7 @@ perl \
 #install java
 openjdk-17-jre-headless \
 #install git and cmake for running setup.py
-git-all \
+git \
 cmake \
 # install prerequisites for samtools 
 wget \
@@ -27,15 +27,21 @@ libcurl4-gnutls-dev \
 libssl-dev \
 libncurses5-dev \
 bzip2 \
-#install ncbi-entrez-direct
+# install ncbi-entrez-direct
 ncbi-entrez-direct \
-#install prerequisites for sratoolkit
+# install prerequisites for sratoolkit
 libxml2-dev \
-#install rsem for bam_to_bigWig
+# install rsem for bam_to_bigWig
 rsem \
-#install cwl runner
+# install cwl runner
 cwltool \
-tabix
+tabix \
+# install prerequisites for regtools
+gfortran \
+libreadline-dev \
+libpcre3-dev \
+build-essential \
+libnss-sss
 
 
 #cpan prerequisites for sratoolkit
