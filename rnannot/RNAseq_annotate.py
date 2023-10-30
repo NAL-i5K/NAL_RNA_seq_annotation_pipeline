@@ -31,15 +31,26 @@ def run_pipeline(run, genome, outdir, layout, platform, model):
         path.join(output_prefix, sra_file_name + '.fastq-dump.log'), 'w')
     f_stderr = open(
         path.join(output_prefix, sra_file_name + '.fastq-dump.errlog'), 'w')
-    subprocess.run(
-        [
-            'fastq-dump', '--dumpbase', '--split-files', '-O', output_prefix,
-            run
-        ],
-        stdout=f_stdout,
-        stderr=f_stderr)
-    f_stdout.close()
-    f_stderr.close()
+    if layout == 'SINGLE':
+        subprocess.run(
+            [
+                'fastq-dump', '--dumpbase', '-O', output_prefix,
+                run
+            ],
+            stdout=f_stdout,
+            stderr=f_stderr)
+        f_stdout.close()
+        f_stderr.close()
+    elif layout == 'PAIRED':
+        subprocess.run(
+            [
+                'fastq-dump', '--dumpbase', '--split-files', '-O', output_prefix,
+                run
+            ],
+            stdout=f_stdout,
+            stderr=f_stderr)
+        f_stdout.close()
+        f_stderr.close()
     # Check if the SRA file is correct or not first
     if layout == 'PAIRED' and (not path.exists(
             path.join(
@@ -57,18 +68,18 @@ def run_pipeline(run, genome, outdir, layout, platform, model):
     if layout == 'SINGLE':
         print('QC ...')
         f_stdout = open(
-            path.join(output_prefix, sra_file_name + '_1.fastqc.log'), 'w')
+            path.join(output_prefix, sra_file_name + '.fastqc.log'), 'w')
         f_stderr = open(
-            path.join(output_prefix, sra_file_name + '_1.fastqc.errlog'), 'w')
+            path.join(output_prefix, sra_file_name + '.fastqc.errlog'), 'w')
         subprocess.run(
             [
                 fastqc_path, '--outdir', output_prefix,
-                path.join(output_prefix, sra_file_name + '_1.fastq')
+                path.join(output_prefix, sra_file_name + '.fastq')
             ],
             stdout=f_stdout,
             stderr=f_stderr)
         with ZipFile(
-                path.join(output_prefix, sra_file_name + '_1_fastqc.zip'),
+                path.join(output_prefix, sra_file_name + '_fastqc.zip'),
                 'r') as zip_ref:
             zip_ref.extractall(output_prefix)
         f_stdout.close()
@@ -85,7 +96,7 @@ def run_pipeline(run, genome, outdir, layout, platform, model):
             subprocess.run(
                 [
                     'java', '-jar', trimmomatic_jar_path, 'SE',
-                    path.join(output_prefix, sra_file_name + '_1.fastq'),
+                    path.join(output_prefix, sra_file_name + '.fastq'),
                     path.join(output_prefix, 'output.fastq'), 'ILLUMINACLIP:' +
                     get_trimmomatic_adapter_path('TruSeq3-SE.fa') + ':2:30:10',
                     'LEADING:30', 'TRAILING:30', 'SLIDINGWINDOW:4:15',
@@ -98,7 +109,7 @@ def run_pipeline(run, genome, outdir, layout, platform, model):
             subprocess.run(
                 [
                     'java', '-jar', trimmomatic_jar_path, 'SE',
-                    path.join(output_prefix, sra_file_name + '_1.fastq'),
+                    path.join(output_prefix, sra_file_name + '.fastq'),
                     path.join(output_prefix, 'output.fastq'), 'ILLUMINACLIP:' +
                     get_trimmomatic_adapter_path('TruSeq2-SE.fa') + ':2:30:10',
                     'LEADING:30', 'TRAILING:30', 'SLIDINGWINDOW:4:15',
@@ -111,7 +122,7 @@ def run_pipeline(run, genome, outdir, layout, platform, model):
             subprocess.run(
                 [
                     'java', '-jar', trimmomatic_jar_path, 'SE',
-                    path.join(output_prefix, sra_file_name + '_1.fastq'),
+                    path.join(output_prefix, sra_file_name + '.fastq'),
                     path.join(output_prefix, 'output.fastq'),
                     'ILLUMINACLIP:' + get_bbmap_adapter_path() + ':2:30:10',
                     'LEADING:30', 'TRAILING:30', 'SLIDINGWINDOW:4:15',
