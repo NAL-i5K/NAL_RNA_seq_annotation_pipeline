@@ -16,10 +16,8 @@ For rnannot
 - Java
 - [SRA Toolkit](https://github.com/ncbi/sra-tools)
 - [samtools](https://github.com/samtools/samtools)
-- [bam_to_bigwig(python3-version)](https://github.com/NAL-i5K/bam_to_bigwig.git)
 - [rsem](https://github.com/deweylab/RSEM/releases) (prerequisite of bam_to_bigwig)
 - [wigToBigWig](http://hgdownload.cse.ucsc.edu/admin/exe/) (prerequisite of bam_to_bigwig)
-- [regtools](https://regtools.readthedocs.io/en/latest/)
 - [edirect](https://dataguide.nlm.nih.gov/edirect/install.html#edirect-installation)
 
 
@@ -154,27 +152,32 @@ To get this docker image, you can:
 ## Run on Ceres (by conda virtual environment)
 **1. Setup conda env**
 - https://scinet.usda.gov/guide/conda/
-- Used conda to create an new env.
-- Package Pysam is not included in the module list of Ceres. Use conda to install them into env. (Python3 and Perl5 may be insatlled into env at the same time) Pysam: https://anaconda.org/bioconda/pysam
+- Use conda to create an new env: `conda create --name [env_name]`
 
-We also provide a conda venv which is ready to be used. If you don't want to create your conda env, you can skip step1~4 and run the following command.
-- `module load minicanda` and `conda activate /lustre/project/nal_genomics/hsiukang/rnannot_venv`
-- Note that you may need to specify the full path of the command for it to work. 
 
 **2. Git clone RNA_annotation_pipeline into working directory**
 
 **3. Activate conda env**
-- Do `module load minicanda` and `conda activate [env_name]`
+- Do `module load miniconda` and `conda activate [env_name]`
 
-**4. Run setup.py**
-- Do `python3 setup.py install`
+**4. Install pysam**
+- Do  `conda install pysam`
+- (Pysam is not included in the module list of Ceres. Use conda to install it into env. Python3 and Perl5 may be installed into env at the same time. Pysam: https://anaconda.org/bioconda/pysam)
+
+**5. Run setup.py**
+- Do `python3 setup.py install --user`
 (If meet "ValueError: bad marshal data", delete .pyc file may solve this problem.)
 find /home/[user_name] -name '*.pyc' -delete
 
-**5. Use bash script to submit job**
-- Download your genome file by `wget [URL of your genome file]`
-- Edit your command in the sbatch.sh file.
-- Do `sbatch sbatch.sh`
+**6. Use bash script to submit job**
+- Download your genome file 
+- Edit your command in your slurm file (see example in rnannot/sbatch.sh)
+- On Ceres, the following commands to additionally set up the evironment are needed in the slurm file:
+`module load java sratoolkit samtools rsem kentutils miniconda`
+`module unload perl` 
+`source activate`
+`conda activate [env_name]`
+
 
 ## Run on Ceres (by singularity container)
 You can find more information about singularity here: https://scinet.usda.gov/guide/singularity
