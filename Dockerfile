@@ -2,7 +2,10 @@ FROM ubuntu:latest
 # installing without interactive dialogue
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install --yes \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates && \
+    update-ca-certificates
+RUN apt-get install -y \
 # install text editors
 nano \
 vim \
@@ -27,6 +30,7 @@ libcurl4-gnutls-dev \
 libssl-dev \
 libncurses5-dev \
 bzip2 \
+python3-pysam \
 #install ncbi-entrez-direct
 ncbi-entrez-direct \
 #install prerequisites for sratoolkit
@@ -46,9 +50,9 @@ RUN wget https://github.com/samtools/samtools/releases/download/1.16.1/samtools-
 ENV PATH="/samtools-1.16.1:${PATH}"
 
 # install sratoolkit
-RUN wget https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/2.10.0/sratoolkit.2.10.0-ubuntu64.tar.gz \
-  && tar -xf sratoolkit.2.10.0-ubuntu64.tar.gz
-ENV PATH="/sratoolkit.2.10.0-ubuntu64/bin:${PATH}"
+RUN wget https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/3.3.0/sratoolkit.3.3.0-alma_linux64.tar.gz \
+  && tar -xf sratoolkit.3.3.0-alma_linux64.tar.gz
+ENV PATH="/sratoolkit.3.3.0-alma_linux64/bin:${PATH}"
 
 # install wigToBigWig
 RUN wget http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/wigToBigWig
@@ -56,7 +60,7 @@ RUN chmod 777 wigToBigWig
 RUN mv wigToBigWig /usr/local/bin/
  
 # install pysam
-RUN pip3 install pysam
+#RUN pip3 install pysam
 
 # echo container env path
 RUN echo $PATH  
