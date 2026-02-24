@@ -32,9 +32,10 @@ def run_pipeline(run, genome, outdir, layout, platform, model):
     f_stderr = open(
         path.join(output_prefix, sra_file_name + '.fastq-dump.errlog'), 'w')
     if layout == 'SINGLE':
+        pwd = os.getcwd()
         subprocess.run(
             [
-                'fastq-dump', '--dumpbase', '-O', output_prefix,
+                'fasterq-dump', '-O', output_prefix, '-t', pwd,
                 run
             ],
             stdout=f_stdout,
@@ -42,9 +43,10 @@ def run_pipeline(run, genome, outdir, layout, platform, model):
         f_stdout.close()
         f_stderr.close()
     elif layout == 'PAIRED':
+        pwd = os.getcwd()
         subprocess.run(
             [
-                'fastq-dump', '--dumpbase', '--split-files', '-O', output_prefix,
+                'fasterq-dump', '-O', output_prefix, '-t', pwd,
                 run
             ],
             stdout=f_stdout,
@@ -92,10 +94,11 @@ def run_pipeline(run, genome, outdir, layout, platform, model):
             path.join(output_prefix, sra_file_name + '.trimmomatic.errlog'),
             'w')
         if platform == 'ILLUMINA' and (model.startswith('Illumina HiSeq')
-                                       or model.startswith('Illumina MiSeq')):
+                                       or model.startswith('Illumina MiSeq')
+                                       or model.startswith('Element AVITI')):
             subprocess.run(
                 [
-                    'java', '-jar', trimmomatic_jar_path, 'SE',
+                    'java', '-jar', trimmomatic_jar_path, 'SE', '-phred33',
                     path.join(output_prefix, sra_file_name + '.fastq'),
                     path.join(output_prefix, 'output.fastq'), 'ILLUMINACLIP:' +
                     get_trimmomatic_adapter_path('TruSeq3-SE.fa') + ':2:30:10',
@@ -108,7 +111,7 @@ def run_pipeline(run, genome, outdir, layout, platform, model):
                 'Illumina Genome Analyzer II'):
             subprocess.run(
                 [
-                    'java', '-jar', trimmomatic_jar_path, 'SE',
+                    'java', '-jar', trimmomatic_jar_path, 'SE', '-phred33',
                     path.join(output_prefix, sra_file_name + '.fastq'),
                     path.join(output_prefix, 'output.fastq'), 'ILLUMINACLIP:' +
                     get_trimmomatic_adapter_path('TruSeq2-SE.fa') + ':2:30:10',
@@ -121,7 +124,7 @@ def run_pipeline(run, genome, outdir, layout, platform, model):
             # Use adapter file from BBMap for other platforms and models.
             subprocess.run(
                 [
-                    'java', '-jar', trimmomatic_jar_path, 'SE',
+                    'java', '-jar', trimmomatic_jar_path, 'SE', '-phred33',
                     path.join(output_prefix, sra_file_name + '.fastq'),
                     path.join(output_prefix, 'output.fastq'),
                     'ILLUMINACLIP:' + get_bbmap_adapter_path() + ':2:30:10',
@@ -133,9 +136,9 @@ def run_pipeline(run, genome, outdir, layout, platform, model):
         f_stdout.close()
         f_stderr.close()
         # Normalizing
-        print('Normalizing ...')   
-        subprocess.run([get_bbmap_command_path('bbnorm.sh'), 'in1=' + path.join(output_prefix, 'output.fastq'), 
-                        'out=' + path.join(output_prefix, 'normalized.fastq'), 'target=' + '100', 'threads=auto'])
+        print('Normalizing ...')
+        subprocess.run([get_bbmap_command_path('bbnorm.sh'), 'qin=33', 'in=' + path.join(output_prefix, 'output.fastq'),
+                        'out=' + path.join(output_prefix, 'normalized.fastq'), 'target=' + '100', 'prefilter=t', 'threads=auto'], check=True)
         return (True, '', 'single')
 
     elif layout == 'PAIRED':
@@ -180,10 +183,11 @@ def run_pipeline(run, genome, outdir, layout, platform, model):
             path.join(output_prefix, sra_file_name + '.trimmomatic.errlog'),
             'w')
         if platform == 'ILLUMINA' and (model.startswith('Illumina HiSeq')
-                                       or model.startswith('Illumina MiSeq')):
+                                       or model.startswith('Illumina MiSeq')
+                                       or model.startswith('Element AVITI')):
             subprocess.run(
                 [
-                    'java', '-jar', trimmomatic_jar_path, 'PE',
+                    'java', '-jar', trimmomatic_jar_path, 'PE', '-phred33',
                     path.join(output_prefix, sra_file_name + '_1.fastq'),
                     path.join(output_prefix, sra_file_name + '_2.fastq'),
                     path.join(output_prefix, 'output_1.fastq'),
@@ -201,7 +205,7 @@ def run_pipeline(run, genome, outdir, layout, platform, model):
                 'Illumina Genome Analyzer II'):
             subprocess.run(
                 [
-                    'java', '-jar', trimmomatic_jar_path, 'PE',
+                    'java', '-jar', trimmomatic_jar_path, 'PE',  '-phred33',
                     path.join(output_prefix, sra_file_name + '_1.fastq'),
                     path.join(output_prefix, sra_file_name + '_2.fastq'),
                     path.join(output_prefix, 'output_1.fastq'),
@@ -234,7 +238,7 @@ def run_pipeline(run, genome, outdir, layout, platform, model):
             f_bbmap_stderr.close()
             subprocess.run(
                 [
-                    'java', '-jar', trimmomatic_jar_path, 'PE',
+                    'java', '-jar', trimmomatic_jar_path, 'PE', '-phred33',
                     path.join(output_prefix, sra_file_name + '_1.fastq'),
                     path.join(output_prefix, sra_file_name + '_2.fastq'),
                     path.join(output_prefix, 'output_1.fastq'),
@@ -251,8 +255,10 @@ def run_pipeline(run, genome, outdir, layout, platform, model):
         f_stderr.close()
         # Normalizing
         print('Normalizing ...')
-        subprocess.run([get_bbmap_command_path('bbnorm.sh'), 'in1=' + path.join(output_prefix,'output_1.fastq'), 'in2=' + path.join(output_prefix, 'output_2.fastq'),
-                       'out1=' + path.join(output_prefix, 'normalized_1.fastq'), 'out2=' + path.join(output_prefix, 'normalized_2.fastq'), 'target=' + '100', 'threads=auto'])
+        subprocess.run([get_bbmap_command_path('repair.sh'), 'in1=' + path.join(output_prefix,'output_1.fastq'), 'in2=' + path.join(output_prefix, 'output_2.fastq'),
+                       'out1=' + path.join(output_prefix, 'fixed_output_1.fastq'), 'out2=' + path.join(output_prefix, 'fixed_output_2.fastq'), 'outsingle=' + path.join(output_prefix, 'orphans.fastq')], check=True)
+        subprocess.run([get_bbmap_command_path('bbnorm.sh'), 'qin=33', 'in1=' + path.join(output_prefix,'fixed_output_1.fastq'), 'in2=' + path.join(output_prefix, 'fixed_output_2.fastq'),
+                       'out1=' + path.join(output_prefix, 'normalized_1.fastq'), 'out2=' + path.join(output_prefix, 'normalized_2.fastq'), 'target=' + '100', 'prefilter=t', 'threads=auto'], check=True)
         return (True, '', 'paired')
 
 
@@ -547,43 +553,41 @@ if __name__ == '__main__':
     # generate bed file
     subprocess.run([get_regtools_path(), 'junctions', 'extract', '-m', '20', '-s', 'XS', '-o', path.join(args.outdir, args.name, new_name + '.bed'), path.join(args.outdir, args.name, new_name + '.bam')])
     #  remove intermediate files
+    # 1. Clean up individual run directories
+    for run in runs:
+        run_dir = path.join(args.outdir, args.name, run)
+
+        # Remove ALL .fastq files (fixes the orphans/fixed_output_2 issue)
+        for fastq_file in glob.glob(path.join(run_dir, "*.fastq")):
+            os.remove(fastq_file)
+
+        # Clean up FastQC zips and folders
+        for fqc_item in glob.glob(path.join(run_dir, f"{run}_*_fastqc*")):
+            if path.isdir(fqc_item):
+                shutil.rmtree(fqc_item)
+            elif path.exists(fqc_item):
+                os.remove(fqc_item)
+
+    # 2. Clean up top-level files if tempFile is False
     if not args.tempFile:
-        os.remove(path.join(args.outdir, args.name, 'output.bam'))
-        if path.exists(path.join(args.outdir, args.name, 'single_output.sam')):
-            os.remove(path.join(args.outdir, args.name, 'single_output.sam'))
-        if path.exists(path.join(args.outdir, args.name, 'single_output.bam')):
-            os.remove(path.join(args.outdir, args.name, 'single_output.bam'))
-        if path.exists(path.join(args.outdir, args.name, 'paired_output.sam')):
-            os.remove(path.join(args.outdir, args.name, 'paired_output.sam'))
-        if path.exists(path.join(args.outdir, args.name, 'paired_output.bam')):
-            os.remove(path.join(args.outdir, args.name, 'paired_output.bam'))
-        if path.exists(path.join(args.outdir, args.name,'merged_normalized_1.fastq')):
-            os.remove(path.join(args.outdir, args.name,'merged_normalized_1.fastq'))
-            os.remove(path.join(args.outdir, args.name,'merged_normalized_2.fastq'))
-        if path.exists(path.join(args.outdir, args.name,'merged_normalized.fastq')):
-            os.remove(path.join(args.outdir, args.name,'merged_normalized.fastq'))
-        hs2_filelist = glob.glob(path.join(args.outdir, args.name, genome_file_name + '.*'))
+        base_dir = path.join(args.outdir, args.name)
+
+        # List of specific files to remove if they exist
+        top_level_files = [
+            'output.bam', 'single_output.sam', 'single_output.bam',
+            'paired_output.sam', 'paired_output.bam',
+            'merged_normalized_1.fastq', 'merged_normalized_2.fastq',
+            'merged_normalized.fastq'
+        ]
+
+        for f in top_level_files:
+            f_path = path.join(base_dir, f)
+            if path.exists(f_path):
+                os.remove(f_path)
+
+    # Remove genome index files (e.g., HiSat2 .ht2 files)
+        hs2_filelist = glob.glob(path.join(base_dir, genome_file_name + '.*'))
         for hs2_file in hs2_filelist:
             os.remove(hs2_file)
-        # remove fastq files in SRR subdirectories
-        for run in runs:
-            if path.exists(path.join(args.outdir, args.name, run, 'output.fastq')):
-                os.remove(path.join(args.outdir, args.name, run, 'output.fastq'))
-                os.remove(path.join(args.outdir, args.name, run, 'normalized.fastq'))
-            if path.exists(path.join(args.outdir, args.name, run, 'output_1.fastq')):
-                os.remove(path.join(args.outdir, args.name, run, 'output_1.fastq'))
-                os.remove(path.join(args.outdir, args.name, run, 'output_1_un.fastq'))
-                os.remove(path.join(args.outdir, args.name, run, 'normalized_1.fastq'))
-                os.remove(path.join(args.outdir, args.name, run, 'output_2.fastq'))
-                os.remove(path.join(args.outdir, args.name, run, 'output_2_un.fastq'))
-                os.remove(path.join(args.outdir, args.name, run, 'normalized_2.fastq'))
-            if path.exists(path.join(args.outdir, args.name, run, run + '_1.fastq')):
-                os.remove(path.join(args.outdir, args.name, run, run + '_1.fastq'))
-                os.remove(path.join(args.outdir, args.name, run, run + '_1_fastqc.zip'))
-                shutil.rmtree(path.join(args.outdir, args.name, run, run + '_1_fastqc'))
-            if path.exists(path.join(args.outdir, args.name, run, run + '_2.fastq')):
-                os.remove(path.join(args.outdir, args.name, run, run + '_2.fastq'))
-                os.remove(path.join(args.outdir, args.name, run, run + '_2_fastqc.zip'))
-                shutil.rmtree(path.join(args.outdir, args.name, run, run + '_2_fastqc'))
+
     print('Finished processing')
-     

@@ -1,3 +1,5 @@
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 from urllib.request import urlretrieve
 from stat import S_IXUSR, S_IXOTH, S_IXGRP, S_IRUSR, S_IROTH, S_IRGRP, S_IWUSR
 from os import mkdir, chmod, remove, chdir
@@ -30,8 +32,8 @@ urlretrieve(
 
 print('Downloading BBMap ...')
 urlretrieve(
-    'https://downloads.sourceforge.net/project/bbmap/BBMap_38.00.tar.gz',
-    join(lib_dir, 'BBMap_38.00.tar.gz'))
+    'https://sourceforge.net/projects/bbmap/files/BBMap_39.01.tar.gz/download',
+    join(lib_dir, 'BBMap_39.01.tar.gz'))
 
 print('Downloading Picard ...')
 urlretrieve(
@@ -92,7 +94,7 @@ chmod(
     S_IXUSR | S_IXOTH | S_IXGRP | S_IRUSR | S_IROTH | S_IRGRP | S_IWUSR)
 
 print('Unpacking BBMap ...')
-tar = tarfile.open(join(lib_dir, 'BBMap_38.00.tar.gz'), 'r:gz')
+tar = tarfile.open(join(lib_dir, 'BBMap_39.01.tar.gz'), 'r:gz')
 tar.extractall(lib_dir)
 tar.close()
 
@@ -102,7 +104,7 @@ with ZipFile(join(lib_dir, 'gatk-4.1.6.0.zip'), 'r') as zip_ref:
 
 print('Cleaning the files ...')
 files = [
-    'BBMap_38.00.tar.gz', 'fastqc_v0.11.7.zip',
+    'BBMap_39.01.tar.gz', 'fastqc_v0.11.7.zip',
     'hisat2-2.1.0-Linux_x86_64.zip', 'Trimmomatic-0.38.zip',
     'gatk-4.1.6.0.zip'
 ]
