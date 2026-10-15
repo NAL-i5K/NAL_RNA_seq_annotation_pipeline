@@ -3,13 +3,15 @@ import os
 from os import path
 from rnannot.parser import parse_args
 from sys import argv, exit
-from rnannot.utils import get_trimmomatic_jar_path, get_fastqc_path, get_trimmomatic_adapter_path, get_hisat2_command_path, get_bbmap_command_path, get_bbmap_adapter_path, get_gatk_jar_path, get_picard_jar_path, get_bam_to_bigwig_path, get_regtools_path
+from rnannot.utils import get_trimmomatic_jar_path, get_fastqc_path, get_trimmomatic_adapter_path, get_hisat2_command_path, get_bbmap_command_path, get_bbmap_adapter_path, get_picard_jar_path, get_bam_to_bigwig_path, get_regtools_path
 import subprocess
 from zipfile import ZipFile
 import gzip
 import shutil
 from itertools import islice
-from six.moves import urllib
+import urllib.request
+import urllib.parse
+import urllib.error
 import datetime
 import random
 import glob
@@ -262,26 +264,26 @@ def run_pipeline(run, genome, outdir, layout, platform, model):
         return (True, '', 'paired')
 
 
-def merge_files(files, outdir):  # merge sam files
-    print('Combing the sam/bam files ...')
-    f_stdout = open(path.join(outdir, 'out.log'), 'a')
-    f_stderr = open(path.join(outdir, 'out.errlog'), 'a')
+def merge_files(files, outdir, java_mem='4g'):  # merge sam/bam files
+    print('Combining the sam/bam files ...')
     args = [
-        'java', '-jar',
+        'java', '-Xmx' + java_mem, '-jar',
         get_picard_jar_path(), 'MergeSamFiles',
-        'O=' + path.join(outdir, 'output.bam')
+        'O=' + path.join(outdir, 'output.bam'),
     ]
     args += ['I=' + f for f in files]
-    subprocess.run(args, stdout=f_stdout, stderr=f_stderr)
+    with open(path.join(outdir, 'out.log'), 'a') as f_stdout, \
+         open(path.join(outdir, 'out.errlog'), 'a') as f_stderr:
+        result = subprocess.run(args, stdout=f_stdout, stderr=f_stderr)
+    if result.returncode != 0:
+        raise RuntimeError(
+            'Picard MergeSamFiles failed (exit code {}); see {}'.format(
+                result.returncode, path.join(outdir, 'out.errlog')))
     print('Finished combining the sam/bam files')
 
-
 def check_ref_files(ref_path):
-    if path.exists(ref_path + '.fai') and path.exists('.dict'):
-        return True
-    else:
-        return False
-
+    dict_path = path.splitext(ref_path)[0] + '.dict'
+    return path.exists(ref_path + '.fai') and path.exists(dict_path)
 
 def read_sam_errors(file_path):
     warns = set()
@@ -533,12 +535,34 @@ if __name__ == '__main__':
     bam_dir = path.join(args.outdir, args.name, 'output.bam')
     output_dir = path.join(args.outdir, args.name, 'output.sorted.bam')
     subprocess.run(['samtools', 'sort', '-@', args.threads_num, bam_dir, '-o', output_dir])
-    subprocess.run(['samtools', 'index', '-c@', args.threads_num, output_dir]) #Creating a .csi index immediately so that bam_to_bigwig.py doesn't try to make a .bai index
-    # converting dowsampled bam to bigwig (includes indexing bam file)
-    print('Generating bigwig file from bam file...')
-    bam_dir = path.join(args.outdir, args.name, 'output.sorted.bam')
-    bigwig_dir = path.join(args.outdir, args.name, 'output.bigwig')
-    subprocess.run(['python3', get_bam_to_bigwig_path(), bam_dir, '-o', bigwig_dir])
+from os import remove
+
+def make_bigwig(bam_path, bigwig_path, threads):
+    """Run bam_to_bigwig.py (unmodified) and verify that it actually worked."""
+    # 1. CSI index, so bam_to_bigwig.py skips its own pysam.index() (.bai) step
+    subprocess.run(['samtools', 'index', '-c', '-@', str(threads), bam_path],
+                   check=True)
+    stale_bai = bam_path + '.bai'
+    if path.exists(stale_bai):
+        remove(stale_bai)   # a .bai would make the script re-index
+
+    # 2. Remove old output so the script never reaches its interactive prompt
+    if path.exists(bigwig_path):
+        remove(bigwig_path)
+
+    # 3. Run the script; stdin=DEVNULL guarantees it can never hang on input()
+    subprocess.run(['python3', get_bam_to_bigwig_path(), bam_path,
+                    '-o', bigwig_path],
+                   stdin=subprocess.DEVNULL)
+
+    # 4. The script exits 0 even on failure, so check the result directly
+    if not path.exists(bigwig_path) or path.getsize(bigwig_path) == 0:
+        prefix = path.splitext(bam_path)[0]
+        for leftover in (prefix + '-filtered.bam', prefix + '.wig',
+                         prefix + '.sizes'):
+            if path.exists(leftover):
+                remove(leftover)
+        raise RuntimeError('bam_to_bigwig.py did not produce ' + bigwig_path)
     # rename bam and bigwig file to [gggsss]_[assembly_name]_RNA-Seq-alignments_[datetime]
     temp = scientific_names[0].split(" ")
     gene_name = temp[0]
