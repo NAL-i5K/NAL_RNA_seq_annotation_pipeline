@@ -2,7 +2,16 @@
 
 [![Build Status](https://travis-ci.org/NAL-i5K/NAL_RNA_seq_annotation_pipeline.svg?branch=master)](https://travis-ci.org/NAL-i5K/NAL_RNA_seq_annotation_pipeline)
 
-A RNA-Seq annotation pipeline based on [SRA Toolkit](https://github.com/ncbi/sra-tools), [fastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/), [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic), [HISAT2](https://github.com/infphilo/hisat2), [BBMap](https://sourceforge.net/projects/bbmap/), [picard](https://broadinstitute.github.io/picard/), [GATK3](https://github.com/broadgsa/gatk-protected), and [samtools](https://github.com/samtools/samtools). It's distributed as a python package.
+A RNA-Seq annotation pipeline based on [SRA Toolkit](https://github.com/ncbi/sra-tools),
+[FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/),
+[Trimmomatic](https://github.com/usadellab/Trimmomatic),
+[HISAT2](https://github.com/DaehwanKimLab/hisat2),
+[BBMap](https://sourceforge.net/projects/bbmap/),
+[Picard](https://broadinstitute.github.io/picard/),
+[samtools](https://github.com/samtools/samtools),
+[regtools](https://github.com/griffithlab/regtools), and
+[bam_to_bigwig](https://github.com/NAL-i5K/bam_to_bigwig).
+It's distributed as a Python package and a Docker container.
 
 There are two parts in this pipeline. 
 
@@ -26,10 +35,24 @@ For add_trackList, the following JBrowse processing scripts are needed
 - add-bw-track.pl
 - flatfile-to-json.pl
 
-## Installation by yourself
+## Installation
 
-After you set up all of the prerequisites, run setup.py file for installing. 
-- `python setup.py install`. It will install a copy of FastQC, Trimmomatic, HISAT2, GATK3, and picard in this python package. You may need to add `--user` in arguments.
+The recommended way to run the pipeline is the Docker image, which bundles all
+dependencies (FastQC, Trimmomatic, HISAT2, BBMap, Picard, samtools, SRA Toolkit,
+regtools, bam_to_bigwig, wigToBigWig):
+
+    docker build -t nal-rnaseq .
+
+For HPC systems that use Apptainer/Singularity:
+
+    apptainer build nal-rnaseq.sif docker-daemon://nal-rnaseq:latest
+
+Tool versions are set as build arguments at the top of the Dockerfile.
+
+To install only the Python package (tools must then be supplied separately,
+with `RNANNOT_LIB` pointing to their directory):
+
+    pip install .
 
 ## Uninstallation
 
