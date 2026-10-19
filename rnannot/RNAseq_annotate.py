@@ -15,6 +15,35 @@ import urllib.error
 import datetime
 import random
 import glob
+import re
+
+
+FASTQ_EXTS = ('.fastq.gz', '.fq.gz', '.fastq', '.fq')
+# sample name, then _R1/_R2, _1/_2, .R1/.R2 or .1/.2, optionally followed by Illumina's _001
+PAIR_RE = re.compile(r'^(?P<sample>.+?)[._]R?(?P<read>[12])(?:_001)?$', re.IGNORECASE)
+
+# Rank words skipped when parsing scientific names
+RANK_MARKERS = {'subsp.', 'subsp', 'ssp.', 'ssp', 'var.', 'var', 'subvar.',
+                'f.', 'forma', 'cf.', 'aff.', 'x', '×'}
+
+
+def parse_scientific_name(scientific_name):
+    """Return [genus, species] or [genus, species, subspecies], cleaned for file names."""
+    parts = [p for p in scientific_name.split() if p.lower() not in RANK_MARKERS]
+    parts = [re.sub(r'[^A-Za-z0-9]', '', p) for p in parts]
+    parts = [p for p in parts if p]
+    if len(parts) < 2:
+        raise ValueError('Cannot parse genus and species from "{}"'.format(scientific_name))
+    if len(parts) > 3:
+        parts = parts[:2] + [parts[-1]]   # keep the lowest infraspecific epithet
+    return parts
+
+
+def make_gggsss(name_parts):
+    """gggsss for binomials, ggssii (2 letters each) for trinomials; lowercase."""
+    if len(name_parts) == 3:
+        return ''.join(p[:2] for p in name_parts).lower()
+    return (name_parts[0][:3] + name_parts[1][:3]).lower()
 
 
 def resolve_threads(requested):
@@ -37,7 +66,64 @@ def resolve_threads(requested):
     return str(max(n, 1))
 
 
-def run_pipeline(run, genome, outdir, layout, platform, model, threads):
+def stage_local_fastq(src, dest):
+    """Place a local FASTQ at dest: symlink plain files, decompress gzipped ones."""
+    if src.endswith('.gz'):
+        with gzip.open(src, 'rb') as f_in, open(dest, 'wb') as f_out:
+            shutil.copyfileobj(f_in, f_out)
+    else:
+        os.symlink(src, dest)   # cleanup removes the link, never the original
+
+
+def discover_local_fastq(fastq_dir):
+    """Scan fastq_dir and return [(sample, 'SINGLE'|'PAIRED', fq1, fq2_or_None), ...]."""
+    fastq_dir = path.abspath(fastq_dir)
+    if not path.isdir(fastq_dir):
+        print('FASTQ directory not found: {}'.format(fastq_dir))
+        exit(1)
+    reads = {}      # sample -> {'1': path, '2': path, 'SE': path}
+    errors = []
+    for name in sorted(os.listdir(fastq_dir)):
+        full = path.join(fastq_dir, name)
+        ext = next((e for e in FASTQ_EXTS if name.lower().endswith(e)), None)
+        if ext is None or not path.isfile(full):
+            continue
+        stem = name[:-len(ext)]
+        m = PAIR_RE.match(stem)
+        sample, read = (m.group('sample'), m.group('read')) if m else (stem, 'SE')
+        slot = reads.setdefault(sample, {})
+        if read in slot:
+            errors.append('{}: more than one file for read {}: {} and {}'.format(
+                sample, read, path.basename(slot[read]), name))
+        slot[read] = full
+
+    samples = []
+    for sample, slot in sorted(reads.items()):
+        if 'SE' in slot and ('1' in slot or '2' in slot):
+            errors.append('{}: has both single-end and paired files'.format(sample))
+        elif '1' in slot and '2' in slot:
+            samples.append((sample, 'PAIRED', slot['1'], slot['2']))
+        else:
+            if '2' in slot:
+                print('WARNING: {} has only a read-2 file; processing as single-end'.format(sample))
+            only = slot.get('SE') or slot.get('1') or slot.get('2')
+            samples.append((sample, 'SINGLE', only, None))
+    if not samples:
+        errors.append('No FASTQ files found in {}'.format(fastq_dir))
+    if errors:
+        print('Problems found in the FASTQ directory:')
+        for e in errors:
+            print('  ' + e)
+        exit(1)
+
+    print('Detected {} local sample(s):'.format(len(samples)))
+    for sample, layout, fq1, fq2 in samples:
+        print('  {:30s} {:7s} {}{}'.format(sample, layout, path.basename(fq1),
+                                           ', ' + path.basename(fq2) if fq2 else ''))
+    return samples
+
+
+def run_pipeline(run, genome, outdir, layout, platform, model, threads, local_fastq=None):
     # create the output folder
     output_prefix = path.join(outdir, run)
     os.mkdir(output_prefix)
@@ -45,35 +131,22 @@ def run_pipeline(run, genome, outdir, layout, platform, model, threads):
         return (
             False,
             'Currently, the colorspace data from ABI_SOLID is not supported', '')
-    # download SRA files and convert SRA file to fastq file(s)
-    print('downloading sra files...')
     sra_file_name = run
-    f_stdout = open(
-        path.join(output_prefix, sra_file_name + '.fastq-dump.log'), 'w')
-    f_stderr = open(
-        path.join(output_prefix, sra_file_name + '.fastq-dump.errlog'), 'w')
-    if layout == 'SINGLE':
-        pwd = os.getcwd()
-        subprocess.run(
-            [
-                'fasterq-dump', '-O', output_prefix, '-t', pwd,
-                run
-            ],
-            stdout=f_stdout,
-            stderr=f_stderr)
-        f_stdout.close()
-        f_stderr.close()
-    elif layout == 'PAIRED':
-        pwd = os.getcwd()
-        subprocess.run(
-            [
-                'fasterq-dump', '-O', output_prefix, '-t', pwd,
-                run
-            ],
-            stdout=f_stdout,
-            stderr=f_stderr)
-        f_stdout.close()
-        f_stderr.close()
+    if local_fastq is not None:
+        print('staging local fastq files...')
+        fq1, fq2 = local_fastq
+        if layout == 'SINGLE':
+            stage_local_fastq(fq1, path.join(output_prefix, sra_file_name + '.fastq'))
+        else:
+            stage_local_fastq(fq1, path.join(output_prefix, sra_file_name + '_1.fastq'))
+            stage_local_fastq(fq2, path.join(output_prefix, sra_file_name + '_2.fastq'))
+    else:
+        # download SRA files and convert SRA file to fastq file(s)
+        print('downloading sra files...')
+        with open(path.join(output_prefix, sra_file_name + '.fastq-dump.log'), 'w') as f_stdout, \
+             open(path.join(output_prefix, sra_file_name + '.fastq-dump.errlog'), 'w') as f_stderr:
+            subprocess.run(['fasterq-dump', '-O', output_prefix, '-t', os.getcwd(), run],
+                           stdout=f_stdout, stderr=f_stderr)
     # Check if the SRA file is correct or not first
     if layout == 'PAIRED' and (not path.exists(
             path.join(
@@ -113,9 +186,10 @@ def run_pipeline(run, genome, outdir, layout, platform, model, threads):
         f_stderr = open(
             path.join(output_prefix, sra_file_name + '.trimmomatic.errlog'),
             'w')
-        if platform == 'ILLUMINA' and (model.startswith('Illumina HiSeq')
-                                       or model.startswith('Illumina MiSeq')) \
-               or model.startswith('Element AVITI'):
+        # Element runs are listed under their own platform in SRA, so match them by model
+        if (platform == 'ILLUMINA' and (model.startswith('Illumina HiSeq')
+                                        or model.startswith('Illumina MiSeq'))) \
+                or model.startswith('Element AVITI'):
             subprocess.run(
                 [
                     'java', '-jar', trimmomatic_jar_path, 'SE', '-phred33',
@@ -195,6 +269,8 @@ def run_pipeline(run, genome, outdir, layout, platform, model, threads):
                 path.join(output_prefix, sra_file_name + '_2_fastqc.zip'),
                 'r') as zip_ref:
             zip_ref.extractall(output_prefix)
+        f_stdout.close()
+        f_stderr.close()
         # Trimming with trimmomatic
         print('Trimming ...')
         f_stdout = open(
@@ -202,9 +278,10 @@ def run_pipeline(run, genome, outdir, layout, platform, model, threads):
         f_stderr = open(
             path.join(output_prefix, sra_file_name + '.trimmomatic.errlog'),
             'w')
-        if platform == 'ILLUMINA' and (model.startswith('Illumina HiSeq')
-                                       or model.startswith('Illumina MiSeq')) \
-               or model.startswith('Element AVITI'):
+        # Element runs are listed under their own platform in SRA, so match them by model
+        if (platform == 'ILLUMINA' and (model.startswith('Illumina HiSeq')
+                                        or model.startswith('Illumina MiSeq'))) \
+                or model.startswith('Element AVITI'):
             subprocess.run(
                 [
                     'java', '-jar', trimmomatic_jar_path, 'PE', '-phred33',
@@ -392,7 +469,7 @@ if __name__ == '__main__':
     # convert many arguments to absolute path
     if not path.isabs(args.outdir):
         args.outdir = path.abspath(args.outdir)
-    if not path.isabs(args.input):
+    if args.input and not path.isabs(args.input):
         args.input = path.abspath(args.input)
     if not path.isabs(args.genome):
         args.genome = path.abspath(args.genome)
@@ -408,54 +485,58 @@ if __name__ == '__main__':
                 shutil.copyfileobj(f_in, f_out)
         genome = new_genome_file_name
     genome_file_name = path.basename(genome)
-    with open(args.input) as f:
-        col_names = f.readline().rstrip('\n').split('\t')
-        run_ind = col_names.index('Run')
-        platform_ind = col_names.index('Platform')
-        model_ind = col_names.index('Model')
-        layout_ind = col_names.index('LibraryLayout')
-        scientific_name_ind = col_names.index('ScientificName')
-        print('Checking the input tsv file: {}'.format(args.input))
-        for ind, name in zip([run_ind, platform_ind, model_ind, layout_ind, scientific_name_ind],
-                             ['Run', 'Platform', 'Model', 'LibraryLayout', 'ScientificName']):
-            if ind == -1:
-                print('{} column is missing in input tsv file.'.format(name))
-                exit(1)
-        runs = []
-        platforms = []
-        models = []
-        layouts = []
-        scientific_names = []
-        for line in f:
-            temp = line.rstrip('\n').split('\t')
-            runs.append(temp[run_ind])
-            platforms.append(temp[platform_ind])
-            models.append(temp[model_ind])
-            layouts.append(temp[layout_ind])
-            scientific_names.append(temp[scientific_name_ind])
 
+    if args.fastq_dir:
+        # Local mode: metadata comes from the command line, files from the directory
+        samples = discover_local_fastq(args.fastq_dir)
+        runs = [s[0] for s in samples]
+        layouts = [s[1] for s in samples]
+        local_files = [(s[2], s[3]) for s in samples]
+        platforms = [args.platform] * len(runs)
+        models = [args.model] * len(runs)
+        scientific_names = [args.species] * len(runs)
+    else:
+        # SRA mode: metadata TSV from the NCBI pull
+        with open(args.input) as f:
+            col_names = f.readline().rstrip('\n').split('\t')
+            required = ['Run', 'Platform', 'Model', 'LibraryLayout', 'ScientificName']
+            missing = [c for c in required if c not in col_names]
+            if missing:
+                print('Missing column(s) in input tsv file: {}'.format(', '.join(missing)))
+                exit(1)
+            run_ind = col_names.index('Run')
+            platform_ind = col_names.index('Platform')
+            model_ind = col_names.index('Model')
+            layout_ind = col_names.index('LibraryLayout')
+            scientific_name_ind = col_names.index('ScientificName')
+            print('Checking the input tsv file: {}'.format(args.input))
+            runs = []
+            platforms = []
+            models = []
+            layouts = []
+            scientific_names = []
+            for line in f:
+                if not line.strip():
+                    continue   # skip blank lines
+                temp = line.rstrip('\n').split('\t')
+                runs.append(temp[run_ind])
+                platforms.append(temp[platform_ind])
+                models.append(temp[model_ind])
+                layouts.append(temp[layout_ind])
+                scientific_names.append(temp[scientific_name_ind])
         # check the amount of sra files in tsv
         if len(runs) > args.MaximumSRA:
             print('The amount of sra files is more than {}'.format(args.MaximumSRA))
             print('Randomly pick {} sra files for downloading'.format(args.MaximumSRA))
-            runs_temp = []
-            platforms_temp = []
-            models_temp = []
-            layouts_temp = []
-            scientific_names_temp = []
-            random_sra = random.sample(range(0,len(runs)), args.MaximumSRA)
+            random_sra = random.sample(range(0, len(runs)), args.MaximumSRA)
             # randomly pick the maximum amount of sra files to download
-            for i in random_sra:
-                runs_temp.append(runs[i])
-                platforms_temp.append(platforms[i])
-                models_temp.append(models[i])
-                layouts_temp.append(layouts[i])
-                scientific_names_temp.append(scientific_names[i])
-            runs = runs_temp
-            platforms = platforms_temp
-            models = models_temp
-            layouts = layouts_temp
-            scientific_names = scientific_names_temp
+            runs = [runs[i] for i in random_sra]
+            platforms = [platforms[i] for i in random_sra]
+            models = [models[i] for i in random_sra]
+            layouts = [layouts[i] for i in random_sra]
+            scientific_names = [scientific_names[i] for i in random_sra]
+        local_files = [None] * len(runs)
+
     # output runs/scientific_name/assembly_name to Source.txt
     date = datetime.datetime.now().strftime("%Y-%m-%d")
     with open(path.join(args.outdir, args.name, 'Source.txt'), 'w') as outfile:
@@ -465,10 +546,28 @@ if __name__ == '__main__':
         for run in runs:
             outfile.write(run + '\n')
 
+    # Decide the output name now, so a bad name fails before any processing
+    # [gggsss]_[assembly_name]_RNA-Seq-alignments_[date]
+    distinct_names = sorted(set(scientific_names))
+    if len(distinct_names) > 1:
+        print('WARNING: runs have different scientific names: {}; using "{}" for naming'.format(
+            '; '.join(distinct_names), scientific_names[0]))
+    if args.Run_prefix:
+        new_name = runs[0]
+    else:
+        if args.gggsss:
+            gggsss = args.gggsss
+            print('Using supplied organism code: {}'.format(gggsss))
+        else:
+            gggsss = make_gggsss(parse_scientific_name(scientific_names[0]))
+            print('Derived organism code: {}'.format(gggsss))
+        new_name = gggsss + '_' + args.assembly + '_RNA-Seq-alignments_' + date
+    print('Output files will be named: {}.*'.format(new_name))
+
     single_files_for_merge = []
     paired1_files_for_merge = []
     paired2_files_for_merge = []
-    for run, platform, model, layout in zip(runs, platforms, models, layouts):
+    for run, platform, model, layout, local_fastq in zip(runs, platforms, models, layouts, local_files):
         print('Processing the file: {}'.format(run))
         return_status, err_message, return_layout = run_pipeline(
             run=run,
@@ -478,6 +577,7 @@ if __name__ == '__main__':
             platform=platform,
             model=model,
             threads=args.threads_num,
+            local_fastq=local_fastq,
             )
         if return_status:
             if return_layout == 'single':
@@ -608,14 +708,7 @@ if __name__ == '__main__':
     make_bigwig(final_bam,
                 path.join(args.outdir, args.name, 'output.bigwig'),
                 args.threads_num)
-    # rename bam and bigwig file to [gggsss]_[assembly_name]_RNA-Seq-alignments_[datetime]
-    temp = scientific_names[0].split(" ")
-    gene_name = temp[0]
-    species_name = temp[1]
-    if not args.Run_prefix:
-        new_name = gene_name[0:3] + species_name[0:3]  + '_' + args.assembly + '_RNA-Seq-alignments_' + date
-    if args.Run_prefix:
-        new_name = runs[0]
+    # rename to the name chosen above
     os.rename(final_bam, path.join(args.outdir, args.name, new_name + '.bam'))
     os.rename(final_bam + '.csi', path.join(args.outdir, args.name, new_name + '.bam.csi'))
     os.rename(path.join(args.outdir, args.name, 'output.bigwig'), path.join(args.outdir, args.name, new_name + '.bigwig'))
@@ -627,7 +720,8 @@ if __name__ == '__main__':
     # 1. Clean up individual run directories
     for run in runs:
         run_dir = path.join(args.outdir, args.name, run)
-        # Remove ALL .fastq files (fixes the orphans/fixed_output_2 issue)
+        # Remove ALL .fastq files (fixes the orphans/fixed_output_2 issue);
+        # for local plain FASTQs these are symlinks, so the originals are untouched
         for fastq_file in glob.glob(path.join(run_dir, "*.fastq")):
             os.remove(fastq_file)
         # Clean up FastQC zips and folders
