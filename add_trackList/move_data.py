@@ -80,8 +80,9 @@ if args.gggsss:
 else:
     gggsss = make_gggsss(parse_scientific_name(scientific_name))
     print('Derived organism code: {}'.format(gggsss))
-folder_name = gggsss + '-RNA-Seq_' + bam_file_date + '_v1.0'
-label = args.label or (gggsss + '_' + assembly_name + '_RNA-Seq-alignments_' + bam_file_date)
+folder_name = gggsss + '-RNA-Seq_v1.0'
+# the track label still carries the date (it comes from the BAM file name)
+label = args.label or (gggsss.capitalize() + '_' + assembly_name + '_RNA-Seq-alignments_' + bam_file_date)
 junctions_folder_name = label + '_junctions'
 
 base = path.join(args.base_path, gggsss, assembly_name)
@@ -100,10 +101,10 @@ for p in (tracklist, new_dir_path, junctions_dir):
 #back up trackList on apollo-node1 server (skip if it doesn't exist yet)
 remote('test ! -e {0} || cp {0} {1}'.format(q(tracklist), q(tracklist + '.bak')))
 
-#create new directory on apollo-node1 server
+#create the analyses folder on apollo-node1 server
 remote('mkdir -p {}'.format(q(new_dir_path)))
 
-#rsync analysis files (bam, csi, bigwig, bed) to new directory on apollo-node1 server
+#rsync the analyses folder; files from earlier datasets are already there and are skipped
 run(['rsync', '-P', '-r', new_dir_path + '/', args.node1_account + ':' + new_dir_path + '/'])
 
 #rsync junction track data to apollo-node1 server

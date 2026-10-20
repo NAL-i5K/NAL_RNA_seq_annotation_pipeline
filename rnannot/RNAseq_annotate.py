@@ -561,7 +561,7 @@ if __name__ == '__main__':
         else:
             gggsss = make_gggsss(parse_scientific_name(scientific_names[0]))
             print('Derived organism code: {}'.format(gggsss))
-        new_name = gggsss + '_' + args.assembly + '_RNA-Seq-alignments_' + date
+        new_name = gggsss.capitalize() + '_' + args.assembly + '_RNA-Seq-alignments_' + date
     print('Output files will be named: {}.*'.format(new_name))
 
     single_files_for_merge = []

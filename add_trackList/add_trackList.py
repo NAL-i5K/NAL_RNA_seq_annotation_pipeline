@@ -77,7 +77,7 @@ folder_name = gggsss + '-RNA-Seq_v1.0'
 
 #warn if the input files were named with a different code
 bam = os.path.basename(args.input_bam)
-if not bam.startswith(gggsss + '_'):
+if not bam.startswith(gggsss.capitalize() + '_'):
     print('WARNING: bam file "{}" does not start with "{}_"; check that --gggsss matches the pipeline run'.format(bam, gggsss))
 
 #create the analyses folder (shared by all RNA-seq datasets for this assembly)
