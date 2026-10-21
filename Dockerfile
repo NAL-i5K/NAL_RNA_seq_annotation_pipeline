@@ -1,6 +1,13 @@
 # Pin an LTS release instead of "latest" so rebuilds are reproducible
 FROM ubuntu:24.04
 
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+ARG RELEASE_VERSION=2026.10.20
+LABEL org.opencontainers.image.title="NAL RNA-Seq Annotation Pipeline" \
+      org.opencontainers.image.version="${RELEASE_VERSION}" \
+      org.opencontainers.image.source="https://github.com/NAL-i5K/NAL_RNA_seq_annotation_pipeline"
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 ARG SAMTOOLS_VERSION=1.24
@@ -9,6 +16,7 @@ ARG SRATOOLKIT_VERSION=3.4.1
 # System packages in one layer; apt cache cleaned to reduce image size
 RUN apt-get update && apt-get install -y \
       ca-certificates \
+      rsync \
       nano vim \
       python3 python3-venv python3-dev python-is-python3 \
       perl libxml-libxml-perl liburi-perl \
@@ -37,9 +45,13 @@ RUN wget -q https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/${SRATOOLKIT_VERSION}/sra
 ENV PATH="/opt/sratoolkit.${SRATOOLKIT_VERSION}-alma_linux64/bin:${PATH}"
 
 # wigToBigWig (HTTPS, sensible permissions)
-RUN wget -q -O /usr/local/bin/wigToBigWig \
-      https://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/wigToBigWig \
- && chmod 755 /usr/local/bin/wigToBigWig
+#RUN wget -q -O /usr/local/bin/wigToBigWig \
+#      https://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/wigToBigWig \
+# && chmod 755 /usr/local/bin/wigToBigWig
+
+RUN rsync -a rsync://hgdownload.soe.ucsc.edu/genome/admin/exe/linux.x86_64/wigToBigWig /usr/local/bin/wigToBigWig \
+ && chmod 755 /usr/local/bin/wigToBigWig \
+ && (/usr/local/bin/wigToBigWig 2>&1 || true) | grep -q "wigToBigWig v"
 
 # Python virtual environment (avoids PEP 668 "externally-managed-environment")
 ENV VIRTUAL_ENV=/opt/venv
