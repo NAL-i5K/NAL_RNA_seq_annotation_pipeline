@@ -18,12 +18,12 @@ def threads_type(value):
     return str(n)
 
 
-def gggsss_type(value):
-    """Validate a user-supplied organism code: letters/digits only, stored lowercase."""
-    value = value.strip().lower()
-    if not re.fullmatch(r'[a-z0-9]+', value):
+def prefix_type(value):
+    """Validate a user-supplied filename prefix: letters, digits, underscores; case kept."""
+    value = value.strip()
+    if not re.fullmatch(r'[A-Za-z0-9_]+', value):
         raise argparse.ArgumentTypeError(
-            'must contain only letters and digits, got "{}"'.format(value))
+            'must contain only letters, digits and underscores, got "{}"'.format(value))
     return value
 
 
@@ -42,9 +42,9 @@ def parse_args(argv):
                         help='Instrument model for local files, e.g. "Illumina HiSeq 2500" or "Element AVITI". '
                              'Selects the adapter set; if empty, adapters are detected with BBMerge (paired) '
                              'or taken from BBMap (single).')
-    parser.add_argument('--gggsss', dest='gggsss', type=gggsss_type, default=None,
-                        help='Organism code for output file names. Default: derived from the scientific name '
-                             '(gggsss for genus+species, ggssii when a subspecies is present).')
+    parser.add_argument('--prefix', dest='prefix', type=prefix_type, default=None,
+                        help='File name prefix for outputs, e.g. Apis_mellifera_ligustica. '
+                             'Default: Genus_species[_subspecies] from the scientific name.')
     parser.add_argument('-g', '--genome', dest='genome', help='A fasta file to align with.')
     parser.add_argument('-n', '--name', nargs='?',
                         default=datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
@@ -59,7 +59,8 @@ def parse_args(argv):
                         help="Number of threads to use, or 'auto' to use all CPUs allocated to the job "
                              "(e.g. by Slurm --cpus-per-task). Values above the allocation are capped. "
                              "Default: %(default)s")
-    parser.add_argument('-R', '--Run_prefix', dest='Run_prefix', default=False, action='store_true', help='if specified, use Run number as output prefix')
+    parser.add_argument('-R', '--Run_prefix', dest='Run_prefix', default=False, action='store_true',
+                        help='if specified, use Run number as output prefix (overrides --prefix)')
     args = parser.parse_args(argv)
     if bool(args.input) == bool(args.fastq_dir):
         parser.error('specify exactly one of -i/--input or -d/--fastq_dir')
@@ -67,4 +68,6 @@ def parse_args(argv):
         parser.error('-d/--fastq_dir requires -s/--species "Genus species"')
     if not args.genome:
         parser.error('-g/--genome is required')
+    if args.Run_prefix and args.prefix:
+        parser.error('use either -R/--Run_prefix or --prefix, not both')
     return args

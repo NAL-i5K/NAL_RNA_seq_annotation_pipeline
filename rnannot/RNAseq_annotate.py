@@ -22,7 +22,7 @@ FASTQ_EXTS = ('.fastq.gz', '.fq.gz', '.fastq', '.fq')
 # sample name, then _R1/_R2, _1/_2, .R1/.R2 or .1/.2, optionally followed by Illumina's _001
 PAIR_RE = re.compile(r'^(?P<sample>.+?)[._]R?(?P<read>[12])(?:_001)?$', re.IGNORECASE)
 
-# Rank words skipped when parsing scientific names
+# Rank words skipped when parsing scientific names (same rules as i5k_naming.py)
 RANK_MARKERS = {'subsp.', 'subsp', 'ssp.', 'ssp', 'var.', 'var', 'subvar.',
                 'f.', 'forma', 'cf.', 'aff.', 'x', '×'}
 
@@ -39,11 +39,9 @@ def parse_scientific_name(scientific_name):
     return parts
 
 
-def make_gggsss(name_parts):
-    """gggsss for binomials, ggssii (2 letters each) for trinomials; lowercase."""
-    if len(name_parts) == 3:
-        return ''.join(p[:2] for p in name_parts).lower()
-    return (name_parts[0][:3] + name_parts[1][:3]).lower()
+def make_name_prefix(scientific_name):
+    """Genus_species[_subspecies] from a scientific name, safe for filenames."""
+    return '_'.join(parse_scientific_name(scientific_name))
 
 
 def resolve_threads(requested):
@@ -547,7 +545,7 @@ if __name__ == '__main__':
             outfile.write(run + '\n')
 
     # Decide the output name now, so a bad name fails before any processing
-    # [gggsss]_[assembly_name]_RNA-Seq-alignments_[date]
+    # [Genus_species(_subspecies)]_[assembly_name]_RNA-Seq-alignments_[date]
     distinct_names = sorted(set(scientific_names))
     if len(distinct_names) > 1:
         print('WARNING: runs have different scientific names: {}; using "{}" for naming'.format(
@@ -555,13 +553,13 @@ if __name__ == '__main__':
     if args.Run_prefix:
         new_name = runs[0]
     else:
-        if args.gggsss:
-            gggsss = args.gggsss
-            print('Using supplied organism code: {}'.format(gggsss))
+        if args.prefix:
+            name_prefix = args.prefix
+            print('Using supplied file name prefix: {}'.format(name_prefix))
         else:
-            gggsss = make_gggsss(parse_scientific_name(scientific_names[0]))
-            print('Derived organism code: {}'.format(gggsss))
-        new_name = gggsss.capitalize() + '_' + args.assembly + '_RNA-Seq-alignments_' + date
+            name_prefix = make_name_prefix(scientific_names[0])
+            print('Derived file name prefix: {}'.format(name_prefix))
+        new_name = name_prefix + '_' + args.assembly + '_RNA-Seq-alignments_' + date
     print('Output files will be named: {}.*'.format(new_name))
 
     single_files_for_merge = []

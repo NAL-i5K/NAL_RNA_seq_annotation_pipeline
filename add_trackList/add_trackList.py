@@ -1,58 +1,33 @@
 import subprocess
 import argparse
 import os
-import re
 from os import path
 import shutil
 
-# Rank words skipped when parsing scientific names
-RANK_MARKERS = {'subsp.', 'subsp', 'ssp.', 'ssp', 'var.', 'var', 'subvar.',
-                'f.', 'forma', 'cf.', 'aff.', 'x', '×'}
-
-
-def gggsss_type(value):
-    """Validate a user-supplied organism code: letters/digits only, stored lowercase."""
-    value = value.strip().lower()
-    if not re.fullmatch(r'[a-z0-9]+', value):
-        raise argparse.ArgumentTypeError(
-            'must contain only letters and digits, got "{}"'.format(value))
-    return value
-
-
-def parse_scientific_name(scientific_name):
-    """Return [genus, species] or [genus, species, subspecies], cleaned for file names."""
-    parts = [p for p in scientific_name.split() if p.lower() not in RANK_MARKERS]
-    parts = [re.sub(r'[^A-Za-z0-9]', '', p) for p in parts]
-    parts = [p for p in parts if p]
-    if len(parts) < 2:
-        raise ValueError('Cannot parse genus and species from "{}"'.format(scientific_name))
-    if len(parts) > 3:
-        parts = parts[:2] + [parts[-1]]   # keep the lowest infraspecific epithet
-    return parts
-
-
-def make_gggsss(name_parts):
-    """gggsss for binomials, ggssii (2 letters each) for trinomials; lowercase."""
-    if len(name_parts) == 3:
-        return ''.join(p[:2] for p in name_parts).lower()
-    return (name_parts[0][:3] + name_parts[1][:3]).lower()
-
+from i5k_naming import (species_dir_type, parse_scientific_name, full_name,
+                        resolve_species_dir, analyses_folder)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-op", "--output_path", help="path of gggsss directory where jbrowse files live (e.g. /app/data/other_species or /project/genomics/username/species_files)", type=str)
+parser.add_argument("-op", "--output_path", required=True,
+                    help="species data root, e.g. /app/data/other_species", type=str)
 parser.add_argument("-j", "--jbrowse_path", help="path of jbrowse container on Scinet", type=str)
 parser.add_argument("-bam", "--input_bam", help="bam file name", type=str)
 parser.add_argument("-bigwig", "--input_bigwig", help="bigwig file name", type=str)
 parser.add_argument("-csi", "--input_csi", help="indexed bam file name, csi format", type=str)
 parser.add_argument("-bed", "--input_bed", help="indexed bed file name", type=str)
 parser.add_argument("-track", "--input_track", help="trackList.json file path", type=str)
-parser.add_argument("-s", "--Source", help="Source.txt file name", type=str)
-parser.add_argument("-g", "--gggsss", type=gggsss_type, default=None,
-                    help="organism code to use instead of deriving it from the scientific name "
-                         "(default: gggsss from genus+species, or ggssii when a subspecies is present). "
-                         "Use the same value given to the pipeline's --gggsss.")
+parser.add_argument("-s", "--Source", required=True, help="Source.txt file name", type=str)
+parser.add_argument("--species_dir", "-g", "--gggsss", dest="species_dir", type=species_dir_type,
+                    default=None,
+                    help="species directory under --output_path (default: existing legacy gggsss "
+                         "directory if present, otherwise Genus_species[_subspecies])")
+parser.add_argument("--prefix", type=species_dir_type, default=None,
+                    help="file name prefix used by the pipeline (default: Genus_species[_subspecies]). "
+                         "Use the same value given to the pipeline's --prefix.")
 parser.add_argument("--overwrite", action="store_true",
                     help="overwrite files that already exist in the analyses folder")
+parser.add_argument("--dry_run", action="store_true",
+                    help="print the resolved paths and exit without copying or editing anything")
 args = parser.parse_args()
 
 #get info from Source.txt
@@ -66,22 +41,25 @@ print('Assembly name: {}'.format(assembly_name))
 print('Annotation files generated date: {}'.format(date))
 print('Source: {}'.format(Submission))
 
-#organism code used for both the directory tree and the analyses folder
-if args.gggsss:
-    gggsss = args.gggsss
-    print('Using supplied organism code: {}'.format(gggsss))
-else:
-    gggsss = make_gggsss(parse_scientific_name(scientific_name))
-    print('Derived organism code: {}'.format(gggsss))
-folder_name = gggsss + '-RNA-Seq_v1.0'
+#species directory: legacy gggsss if it already exists, otherwise full name
+species_dir, reason = resolve_species_dir(args.output_path, scientific_name, args.species_dir)
+folder_name = analyses_folder(species_dir)
+species_root = path.join(args.output_path, species_dir, assembly_name)
+new_dir_path = path.join(species_root, 'scaffold', 'analyses', folder_name)
+print('Species directory: {} ({})'.format(species_dir, reason))
+print('Analyses folder:   {}'.format(new_dir_path))
 
-#warn if the input files were named with a different code
+#warn if the input files were named with a different prefix
 bam = os.path.basename(args.input_bam)
-if not bam.startswith(gggsss.capitalize() + '_'):
-    print('WARNING: bam file "{}" does not start with "{}_"; check that --gggsss matches the pipeline run'.format(bam, gggsss))
+prefix = args.prefix or full_name(parse_scientific_name(scientific_name))
+if not bam.startswith(prefix + '_'):
+    print('WARNING: bam file "{}" does not start with "{}_"; check that --prefix matches the pipeline run'.format(bam, prefix))
+
+if args.dry_run:
+    print('Dry run: nothing copied, trackList.json not modified.')
+    raise SystemExit(0)
 
 #create the analyses folder (shared by all RNA-seq datasets for this assembly)
-new_dir_path = path.join(args.output_path, gggsss, assembly_name, 'scaffold', 'analyses', folder_name)
 os.makedirs(new_dir_path, exist_ok=True)
 
 #cp files to the analyses folder, refusing to overwrite unless asked
@@ -122,5 +100,5 @@ proc_bw.communicate()
 print('add junction reads  to trackList ...')
 metadata = '{"unsafePopup": true, "metadata": {"Analysis provider": "i5k Workspace@NAL",\n"Analysis method": "https://github.com/NAL-i5K/NAL_RNA_seq_annotation_pipeline/",\n"Data source":"' + ','.join(data_source_runs) + '",\n"Publication status":"Analysis: NA; Source data: see individual SRA accessions",\n"Track legend":"Junction reads generated by Hisat2 aligner and regtools. The number of alignments supporting the junction read is listed in blue."}, "category":"RNA-Seq/Splice junctions" }'
 description = '{ "description": "score" }'
-proc_junc = subprocess.Popen(['singularity', 'exec', args.jbrowse_path, 'flatfile-to-json.pl', '--bed', path.join(new_dir_path, bed), '--trackLabel', label + '_junctions', '--config', metadata, '--out', path.join(args.output_path, gggsss, assembly_name, 'jbrowse/data'), '--clientConfig', description])
+proc_junc = subprocess.Popen(['singularity', 'exec', args.jbrowse_path, 'flatfile-to-json.pl', '--bed', path.join(new_dir_path, bed), '--trackLabel', label + '_junctions', '--config', metadata, '--out', path.join(species_root, 'jbrowse/data'), '--clientConfig', description])
 proc_junc.communicate()
