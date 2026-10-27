@@ -26,6 +26,9 @@ PAIR_RE = re.compile(r'^(?P<sample>.+?)[._]R?(?P<read>[12])(?:_001)?$', re.IGNOR
 RANK_MARKERS = {'subsp.', 'subsp', 'ssp.', 'ssp', 'var.', 'var', 'subvar.',
                 'f.', 'forma', 'cf.', 'aff.', 'x', '×'}
 
+# Environment variables that identify a Slurm job and its memory allocation
+SLURM_KEYS = ('SLURM_JOB_ID', 'SLURM_JOBID', 'SLURM_MEM_PER_NODE', 'SLURM_MEM_PER_CPU')
+
 
 def parse_scientific_name(scientific_name):
     """Return [genus, species] or [genus, species, subspecies], cleaned for file names."""
@@ -64,17 +67,104 @@ def resolve_threads(requested):
     return str(max(n, 1))
 
 
+def _read_proc_environ(pid):
+    """Environment of process pid as a dict, or None if it cannot be read."""
+    try:
+        with open('/proc/{}/environ'.format(pid), 'rb') as f:
+            data = f.read()
+    except OSError:
+        return None
+    env = {}
+    for item in data.split(b'\0'):
+        if b'=' in item:
+            key, value = item.split(b'=', 1)
+            env[key.decode(errors='replace')] = value.decode(errors='replace')
+    return env
+
+
+def _parent_pid(pid):
+    """Parent PID of pid from /proc/<pid>/stat, or 0 if unknown."""
+    try:
+        with open('/proc/{}/stat'.format(pid)) as f:
+            stat = f.read()
+        # fields after the ")" that closes the command name: state, ppid, ...
+        return int(stat.rsplit(')', 1)[1].split()[1])
+    except (OSError, ValueError, IndexError):
+        return 0
+
+
+def _find_slurm_env():
+    """Find the Slurm job environment.
+
+    Returns (env, where, unreadable). Under 'apptainer exec --cleanenv' the Slurm
+    variables are removed from this process, but the batch shell that started
+    Apptainer still has them, so walk up the parent processes and read theirs.
+    """
+    if any(os.environ.get(k) for k in SLURM_KEYS):
+        return dict(os.environ), 'this process', False
+    unreadable = False
+    pid = os.getppid()
+    seen = set()
+    while pid > 1 and pid not in seen:
+        seen.add(pid)
+        env = _read_proc_environ(pid)
+        if env is None:
+            unreadable = True
+        elif any(env.get(k) for k in SLURM_KEYS):
+            return env, 'parent process {}'.format(pid), unreadable
+        pid = _parent_pid(pid)
+    return {}, None, unreadable
+
+
+def _slurm_mem_gb(env):
+    """Memory granted by Slurm in GB, from a job environment dict, or None."""
+    try:
+        if env.get('SLURM_MEM_PER_NODE'):
+            return int(env['SLURM_MEM_PER_NODE']) / 1024
+        if env.get('SLURM_MEM_PER_CPU'):
+            cpus = (env.get('SLURM_CPUS_ON_NODE') or env.get('SLURM_CPUS_PER_TASK')
+                    or len(os.sched_getaffinity(0)))
+            return int(env['SLURM_MEM_PER_CPU']) * int(cpus) / 1024
+    except (ValueError, TypeError):
+        pass
+    return None
+
+
+def _cgroup_mounts():
+    """Cgroup mounts visible to this process: {'v2': (mount_point, root), 'memory': (...)}."""
+    mounts = {}
+    try:
+        with open('/proc/self/mountinfo') as f:
+            for line in f:
+                left, _, right = line.partition(' - ')
+                fields = left.split()
+                rfields = right.split()
+                if len(fields) < 5 or not rfields:
+                    continue
+                mount_root, mount_point, fstype = fields[3], fields[4], rfields[0]
+                if fstype == 'cgroup2':
+                    mounts.setdefault('v2', (mount_point, mount_root))
+                elif fstype == 'cgroup' and len(rfields) >= 3 and 'memory' in rfields[2].split(','):
+                    mounts.setdefault('memory', (mount_point, mount_root))
+    except OSError:
+        pass
+    mounts.setdefault('v2', ('/sys/fs/cgroup', '/'))
+    mounts.setdefault('memory', ('/sys/fs/cgroup/memory', '/'))
+    return mounts
+
+
 def _cgroup_limit_bytes():
     """Smallest memory limit on this process's cgroup path (v2 or v1), or None.
 
     Slurm usually sets the limit on the job cgroup, not the step/task cgroup the
-    process lives in, so walk from the process's cgroup up to the root.
+    process lives in, so walk from the process's cgroup up to the mount root.
     """
     try:
         with open('/proc/self/cgroup') as f:
             lines = f.read().splitlines()
     except OSError:
         return None
+    mounts = _cgroup_mounts()
     limits = []
     for line in lines:
         parts = line.split(':', 2)
@@ -82,14 +172,19 @@ def _cgroup_limit_bytes():
             continue
         hier, controllers, cg_path = parts
         if hier == '0' and controllers == '':                 # cgroup v2
-            root, fname = '/sys/fs/cgroup', 'memory.max'
+            mount_point, mount_root = mounts['v2']
+            fname = 'memory.max'
         elif 'memory' in controllers.split(','):              # cgroup v1
-            root, fname = '/sys/fs/cgroup/memory', 'memory.limit_in_bytes'
+            mount_point, mount_root = mounts['memory']
+            fname = 'memory.limit_in_bytes'
         else:
             continue
-        rel = cg_path.strip('/')
+        rel = cg_path
+        if mount_root != '/' and rel.startswith(mount_root):
+            rel = rel[len(mount_root):]
+        rel = rel.strip('/')
         while True:
-            candidate = path.join(root, rel, fname) if rel else path.join(root, fname)
+            candidate = path.join(mount_point, rel, fname) if rel else path.join(mount_point, fname)
             try:
                 with open(candidate) as f:
                     value = f.read().strip()
@@ -104,29 +199,60 @@ def _cgroup_limit_bytes():
 
 
 def resolve_mem_gb(requested):
-    """Usable memory in GB: the job's cgroup limit, the requested value, or physical RAM."""
+    """Usable memory in GB.
+
+    Detected limits (smallest wins): Slurm allocation from this process or an
+    ancestor process, and the cgroup memory limit. -M overrides, capped at the
+    detected limit. Physical RAM is used only when not running in a Slurm job.
+    """
     phys = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES') / 1024**3
+    slurm_env, where, unreadable = _find_slurm_env()
+    slurm = _slurm_mem_gb(slurm_env) if slurm_env else None
     limit = _cgroup_limit_bytes()
-    if limit:
-        available = limit / 1024**3
+    cgroup = limit / 1024**3 if limit else None
+
+    found = []
+    if slurm:
+        found.append((slurm, 'Slurm allocation (from {})'.format(where)))
+    if cgroup:
+        found.append((cgroup, 'cgroup memory limit'))
+    if found:
+        detected, source = min(found)
     else:
-        available = phys
-    if requested is None or str(requested).strip().lower() in ('', '0', 'auto'):
-        if not limit:
-            print('WARNING: no cgroup memory limit found; assuming all {:.0f} GB of physical RAM. '
-                  'Use -M to set the memory available to this run.'.format(phys))
-        return available
-    n = float(requested)
-    if n > available:
-        print('Requested {} GB but only {:.0f} GB are available; using {:.0f}'.format(
-            n, available, available))
-        n = available
-    return n
+        detected, source = None, None
+
+    if requested is not None and str(requested).strip().lower() not in ('', '0', 'auto'):
+        n = float(requested)
+        if detected is not None and n > detected:
+            print('Requested {} GB but only {:.0f} GB are available ({}); using {:.0f}'.format(
+                n, detected, source, detected))
+            n = detected
+        print('Memory limit source: -M {:.0f} GB'.format(n))
+        return n
+
+    if detected is not None:
+        print('Memory limit source: {}'.format(source))
+        return detected
+
+    if slurm_env or unreadable:
+        raise SystemExit(
+            'ERROR: could not determine this job\'s memory limit (only the node\'s {:.0f} GB is visible).\n'
+            'Pass -M <GB> with the memory requested from Slurm.'.format(phys))
+    print('WARNING: not running in a Slurm job; assuming all {:.0f} GB of physical RAM. '
+          'Use -M to set the memory available to this run.'.format(phys))
+    return phys
 
 
 def java_xmx(mem_gb, fraction=0.8):
-    """-Xmx flag for BBTools: a fraction of the job's memory, leaving JVM/OS headroom."""
+    """-Xmx flag for Java tools: a fraction of the job's memory, leaving JVM/OS headroom."""
     return '-Xmx{}g'.format(max(1, int(mem_gb * fraction)))
+
+
+def sort_mem_per_thread(mem_gb, threads, fraction=0.5):
+    """samtools sort -m value so that all sort threads together use at most fraction of memory."""
+    per_thread_mb = int(mem_gb * fraction * 1024 / max(int(threads), 1))
+    per_thread_mb = max(100, min(per_thread_mb, 4096))
+    return '{}M'.format(per_thread_mb)
 
 
 def stage_local_fastq(src, dest):
@@ -223,6 +349,10 @@ def run_pipeline(run, genome, outdir, layout, platform, model, threads, mem_gb, 
     # In the last step, perfom normalizing using bbnorm
     fastqc_path = get_fastqc_path()
     trimmomatic_jar_path = get_trimmomatic_jar_path()
+    # Trimmomatic needs little heap; cap it so the JVM default (1/4 of node RAM) is never used
+    trim_xmx = java_xmx(min(mem_gb, 10))
+    # BBTools would otherwise size their heap from the whole node's RAM
+    bb_xmx = java_xmx(mem_gb)
     if layout == 'SINGLE':
         print('QC ...')
         f_stdout = open(
@@ -255,7 +385,7 @@ def run_pipeline(run, genome, outdir, layout, platform, model, threads, mem_gb, 
                 or model.startswith('Element AVITI'):
             subprocess.run(
                 [
-                    'java', '-jar', trimmomatic_jar_path, 'SE', '-phred33',
+                    'java', trim_xmx, '-jar', trimmomatic_jar_path, 'SE', '-phred33',
                     path.join(output_prefix, sra_file_name + '.fastq'),
                     path.join(output_prefix, 'output.fastq'), 'ILLUMINACLIP:' +
                     get_trimmomatic_adapter_path('TruSeq3-SE.fa') + ':2:30:10',
@@ -268,7 +398,7 @@ def run_pipeline(run, genome, outdir, layout, platform, model, threads, mem_gb, 
                 'Illumina Genome Analyzer II'):
             subprocess.run(
                 [
-                    'java', '-jar', trimmomatic_jar_path, 'SE', '-phred33',
+                    'java', trim_xmx, '-jar', trimmomatic_jar_path, 'SE', '-phred33',
                     path.join(output_prefix, sra_file_name + '.fastq'),
                     path.join(output_prefix, 'output.fastq'), 'ILLUMINACLIP:' +
                     get_trimmomatic_adapter_path('TruSeq2-SE.fa') + ':2:30:10',
@@ -281,7 +411,7 @@ def run_pipeline(run, genome, outdir, layout, platform, model, threads, mem_gb, 
             # Use adapter file from BBMap for other platforms and models.
             subprocess.run(
                 [
-                    'java', '-jar', trimmomatic_jar_path, 'SE', '-phred33',
+                    'java', trim_xmx, '-jar', trimmomatic_jar_path, 'SE', '-phred33',
                     path.join(output_prefix, sra_file_name + '.fastq'),
                     path.join(output_prefix, 'output.fastq'),
                     'ILLUMINACLIP:' + get_bbmap_adapter_path() + ':2:30:10',
@@ -292,9 +422,9 @@ def run_pipeline(run, genome, outdir, layout, platform, model, threads, mem_gb, 
                 stderr=f_stderr)
         f_stdout.close()
         f_stderr.close()
-        # Normalizing (explicit -Xmx: BBTools would otherwise size the heap from the node's RAM)
+        # Normalizing
         print('Normalizing ...')
-        subprocess.run([get_bbmap_command_path('bbnorm.sh'), java_xmx(mem_gb), 'qin=33',
+        subprocess.run([get_bbmap_command_path('bbnorm.sh'), bb_xmx, 'qin=33',
                         'in=' + path.join(output_prefix, 'output.fastq'),
                         'out=' + path.join(output_prefix, 'normalized.fastq'), 'target=' + '100', 'prefilter=t',
                         'threads=' + threads], check=True)
@@ -348,7 +478,7 @@ def run_pipeline(run, genome, outdir, layout, platform, model, threads, mem_gb, 
                 or model.startswith('Element AVITI'):
             subprocess.run(
                 [
-                    'java', '-jar', trimmomatic_jar_path, 'PE', '-phred33',
+                    'java', trim_xmx, '-jar', trimmomatic_jar_path, 'PE', '-phred33',
                     path.join(output_prefix, sra_file_name + '_1.fastq'),
                     path.join(output_prefix, sra_file_name + '_2.fastq'),
                     path.join(output_prefix, 'output_1.fastq'),
@@ -366,7 +496,7 @@ def run_pipeline(run, genome, outdir, layout, platform, model, threads, mem_gb, 
                 'Illumina Genome Analyzer II'):
             subprocess.run(
                 [
-                    'java', '-jar', trimmomatic_jar_path, 'PE',  '-phred33',
+                    'java', trim_xmx, '-jar', trimmomatic_jar_path, 'PE', '-phred33',
                     path.join(output_prefix, sra_file_name + '_1.fastq'),
                     path.join(output_prefix, sra_file_name + '_2.fastq'),
                     path.join(output_prefix, 'output_1.fastq'),
@@ -388,7 +518,7 @@ def run_pipeline(run, genome, outdir, layout, platform, model, threads, mem_gb, 
                 path.join(output_prefix, sra_file_name + '.bbmap.errlog'), 'w')
             subprocess.run(
                 [
-                    get_bbmap_command_path('bbmerge.sh'), java_xmx(mem_gb), 'in1=' + path.join(
+                    get_bbmap_command_path('bbmerge.sh'), bb_xmx, 'in1=' + path.join(
                         output_prefix, sra_file_name + '_1.fastq'), 'in2=' +
                     path.join(output_prefix, sra_file_name + '_2.fastq'),
                     'outa=' + path.join(output_prefix, 'adapters.fa')
@@ -399,7 +529,7 @@ def run_pipeline(run, genome, outdir, layout, platform, model, threads, mem_gb, 
             f_bbmap_stderr.close()
             subprocess.run(
                 [
-                    'java', '-jar', trimmomatic_jar_path, 'PE', '-phred33',
+                    'java', trim_xmx, '-jar', trimmomatic_jar_path, 'PE', '-phred33',
                     path.join(output_prefix, sra_file_name + '_1.fastq'),
                     path.join(output_prefix, sra_file_name + '_2.fastq'),
                     path.join(output_prefix, 'output_1.fastq'),
@@ -414,23 +544,23 @@ def run_pipeline(run, genome, outdir, layout, platform, model, threads, mem_gb, 
                 stderr=f_stderr)
         f_stdout.close()
         f_stderr.close()
-        # Normalizing (explicit -Xmx: BBTools would otherwise size the heap from the node's RAM)
+        # Normalizing
         print('Normalizing ...')
-        subprocess.run([get_bbmap_command_path('repair.sh'), java_xmx(mem_gb),
+        subprocess.run([get_bbmap_command_path('repair.sh'), bb_xmx,
                         'in1=' + path.join(output_prefix, 'output_1.fastq'), 'in2=' + path.join(output_prefix, 'output_2.fastq'),
                         'out1=' + path.join(output_prefix, 'fixed_output_1.fastq'), 'out2=' + path.join(output_prefix, 'fixed_output_2.fastq'),
                         'outsingle=' + path.join(output_prefix, 'orphans.fastq')], check=True)
-        subprocess.run([get_bbmap_command_path('bbnorm.sh'), java_xmx(mem_gb), 'qin=33',
+        subprocess.run([get_bbmap_command_path('bbnorm.sh'), bb_xmx, 'qin=33',
                         'in1=' + path.join(output_prefix, 'fixed_output_1.fastq'), 'in2=' + path.join(output_prefix, 'fixed_output_2.fastq'),
                         'out1=' + path.join(output_prefix, 'normalized_1.fastq'), 'out2=' + path.join(output_prefix, 'normalized_2.fastq'),
                         'target=' + '100', 'prefilter=t', 'threads=' + threads], check=True)
         return (True, '', 'paired')
 
 
-def merge_files(files, outdir, java_mem='4g'):  # merge sam/bam files
+def merge_files(files, outdir, xmx='-Xmx4g'):  # merge sam/bam files
     print('Combining the sam/bam files ...')
     args = [
-        'java', '-Xmx' + java_mem, '-jar',
+        'java', xmx, '-jar',
         get_picard_jar_path(), 'MergeSamFiles',
         'O=' + path.join(outdir, 'output.bam'),
     ]
@@ -470,14 +600,15 @@ def is_coordinate_sorted(bam_path):
     return False
 
 
-def ensure_coordinate_sorted(bam_path, threads):
+def ensure_coordinate_sorted(bam_path, threads, sort_mem):
     """Sort bam_path in place only if its header says it isn't coordinate-sorted."""
     if is_coordinate_sorted(bam_path):
         print('BAM is already coordinate-sorted, skipping sort')
         return
     print('Sorting bam file...')
     tmp_path = bam_path + '.sorting.bam'
-    subprocess.run(['samtools', 'sort', '-@', str(threads), '-o', tmp_path, bam_path],
+    subprocess.run(['samtools', 'sort', '-@', str(threads), '-m', sort_mem,
+                    '-o', tmp_path, bam_path],
                    check=True)
     os.replace(tmp_path, bam_path)
 
@@ -534,7 +665,9 @@ if __name__ == '__main__':
     args.threads_num = resolve_threads(getattr(args, 'threads_num', None))
     print('Using {} threads'.format(args.threads_num))
     args.mem_gb = resolve_mem_gb(getattr(args, 'mem_gb', None))
-    print('Using {:.0f} GB memory limit (BBTools {})'.format(args.mem_gb, java_xmx(args.mem_gb)))
+    sort_mem = sort_mem_per_thread(args.mem_gb, args.threads_num)
+    print('Using {:.0f} GB memory limit (BBTools {}, samtools sort -m {} per thread)'.format(
+        args.mem_gb, java_xmx(args.mem_gb), sort_mem))
     # convert many arguments to absolute path
     if not path.isabs(args.outdir):
         args.outdir = path.abspath(args.outdir)
@@ -733,7 +866,7 @@ if __name__ == '__main__':
             path.join(args.outdir, args.name, genome_file_name + '_single.samtools.errlog'), 'w')
         subprocess.run(
             [
-                'samtools', 'sort', '-@', args.threads_num, '-o',
+                'samtools', 'sort', '-@', args.threads_num, '-m', sort_mem, '-o',
                 path.join(args.outdir, args.name, 'single_output.bam'), '-O', 'bam', '-T',
                 path.join(args.outdir, args.name, 'single_output'),
                 path.join(args.outdir, args.name, 'single_output.sam')
@@ -750,7 +883,7 @@ if __name__ == '__main__':
             path.join(args.outdir, args.name, genome_file_name + '_paired.samtools.errlog'), 'w')
         subprocess.run(
             [
-                'samtools', 'sort', '-@', args.threads_num, '-o',
+                'samtools', 'sort', '-@', args.threads_num, '-m', sort_mem, '-o',
                 path.join(args.outdir, args.name, 'paired_output.bam'), '-O', 'bam', '-T',
                 path.join(args.outdir, args.name, 'paired_output'),
                 path.join(args.outdir, args.name, 'paired_output.sam')
@@ -763,7 +896,7 @@ if __name__ == '__main__':
     if path.exists(path.join(args.outdir, args.name, 'single_output.bam')) and path.exists(path.join(args.outdir, args.name, 'paired_output.bam')):
         print('Start merging single and paired output files...')
         files_for_merge = [path.join(args.outdir, args.name, 'single_output.bam'), path.join(args.outdir, args.name, 'paired_output.bam')]
-        merge_files(files_for_merge, path.join(args.outdir, args.name))
+        merge_files(files_for_merge, path.join(args.outdir, args.name), java_xmx(args.mem_gb))
     elif path.exists(path.join(args.outdir, args.name, 'single_output.bam')):
         print('The layout of all files is SINGLE, skip merging process...')
         os.rename(path.join(args.outdir, args.name, 'single_output.bam'), path.join(args.outdir, args.name, 'output.bam'))
@@ -772,7 +905,7 @@ if __name__ == '__main__':
         os.rename(path.join(args.outdir, args.name, 'paired_output.bam'), path.join(args.outdir, args.name, 'output.bam'))
     # output.bam is already coordinate-sorted; only sort if the header says otherwise
     final_bam = path.join(args.outdir, args.name, 'output.bam')
-    ensure_coordinate_sorted(final_bam, args.threads_num)
+    ensure_coordinate_sorted(final_bam, args.threads_num, sort_mem)
     # index + bigwig (creates output.bam.csi and output.bigwig)
     print('Generating bigwig file...')
     make_bigwig(final_bam,
