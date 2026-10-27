@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='rnannot',
-    version='0.1.0',
+    version='2026.10.26',
     python_requires='>=3.10',
     install_requires=[],          # add 'six' back only if the scripts import it
     packages=find_packages('.'),

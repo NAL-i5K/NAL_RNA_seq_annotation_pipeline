@@ -3,7 +3,7 @@ FROM ubuntu:24.04
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
-ARG RELEASE_VERSION=2026.10.20
+ARG RELEASE_VERSION=2026.10.26
 LABEL org.opencontainers.image.title="NAL RNA-Seq Annotation Pipeline" \
       org.opencontainers.image.version="${RELEASE_VERSION}" \
       org.opencontainers.image.source="https://github.com/NAL-i5K/NAL_RNA_seq_annotation_pipeline"
