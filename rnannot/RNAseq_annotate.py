@@ -64,6 +64,71 @@ def resolve_threads(requested):
     return str(max(n, 1))
 
 
+def _cgroup_limit_bytes():
+    """Smallest memory limit on this process's cgroup path (v2 or v1), or None.
+
+    Slurm usually sets the limit on the job cgroup, not the step/task cgroup the
+    process lives in, so walk from the process's cgroup up to the root.
+    """
+    try:
+        with open('/proc/self/cgroup') as f:
+            lines = f.read().splitlines()
+    except OSError:
+        return None
+    limits = []
+    for line in lines:
+        parts = line.split(':', 2)
+        if len(parts) != 3:
+            continue
+        hier, controllers, cg_path = parts
+        if hier == '0' and controllers == '':                 # cgroup v2
+            root, fname = '/sys/fs/cgroup', 'memory.max'
+        elif 'memory' in controllers.split(','):              # cgroup v1
+            root, fname = '/sys/fs/cgroup/memory', 'memory.limit_in_bytes'
+        else:
+            continue
+        rel = cg_path.strip('/')
+        while True:
+            candidate = path.join(root, rel, fname) if rel else path.join(root, fname)
+            try:
+                with open(candidate) as f:
+                    value = f.read().strip()
+                if value != 'max' and int(value) < 2**60:     # huge value = no limit
+                    limits.append(int(value))
+            except (OSError, ValueError):
+                pass
+            if not rel:
+                break
+            rel = path.dirname(rel)
+    return min(limits) if limits else None
+
+
+def resolve_mem_gb(requested):
+    """Usable memory in GB: the job's cgroup limit, the requested value, or physical RAM."""
+    phys = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES') / 1024**3
+    limit = _cgroup_limit_bytes()
+    if limit:
+        available = limit / 1024**3
+    else:
+        available = phys
+    if requested is None or str(requested).strip().lower() in ('', '0', 'auto'):
+        if not limit:
+            print('WARNING: no cgroup memory limit found; assuming all {:.0f} GB of physical RAM. '
+                  'Use -M to set the memory available to this run.'.format(phys))
+        return available
+    n = float(requested)
+    if n > available:
+        print('Requested {} GB but only {:.0f} GB are available; using {:.0f}'.format(
+            n, available, available))
+        n = available
+    return n
+
+
+def java_xmx(mem_gb, fraction=0.8):
+    """-Xmx flag for BBTools: a fraction of the job's memory, leaving JVM/OS headroom."""
+    return '-Xmx{}g'.format(max(1, int(mem_gb * fraction)))
+
+
 def stage_local_fastq(src, dest):
     """Place a local FASTQ at dest: symlink plain files, decompress gzipped ones."""
     if src.endswith('.gz'):
@@ -121,7 +186,7 @@ def discover_local_fastq(fastq_dir):
     return samples
 
 
-def run_pipeline(run, genome, outdir, layout, platform, model, threads, local_fastq=None):
+def run_pipeline(run, genome, outdir, layout, platform, model, threads, mem_gb, local_fastq=None):
     # create the output folder
     output_prefix = path.join(outdir, run)
     os.mkdir(output_prefix)
@@ -227,9 +292,10 @@ def run_pipeline(run, genome, outdir, layout, platform, model, threads, local_fa
                 stderr=f_stderr)
         f_stdout.close()
         f_stderr.close()
-        # Normalizing
+        # Normalizing (explicit -Xmx: BBTools would otherwise size the heap from the node's RAM)
         print('Normalizing ...')
-        subprocess.run([get_bbmap_command_path('bbnorm.sh'), 'qin=33', 'in=' + path.join(output_prefix, 'output.fastq'),
+        subprocess.run([get_bbmap_command_path('bbnorm.sh'), java_xmx(mem_gb), 'qin=33',
+                        'in=' + path.join(output_prefix, 'output.fastq'),
                         'out=' + path.join(output_prefix, 'normalized.fastq'), 'target=' + '100', 'prefilter=t',
                         'threads=' + threads], check=True)
         return (True, '', 'single')
@@ -322,7 +388,7 @@ def run_pipeline(run, genome, outdir, layout, platform, model, threads, local_fa
                 path.join(output_prefix, sra_file_name + '.bbmap.errlog'), 'w')
             subprocess.run(
                 [
-                    get_bbmap_command_path('bbmerge.sh'), 'in1=' + path.join(
+                    get_bbmap_command_path('bbmerge.sh'), java_xmx(mem_gb), 'in1=' + path.join(
                         output_prefix, sra_file_name + '_1.fastq'), 'in2=' +
                     path.join(output_prefix, sra_file_name + '_2.fastq'),
                     'outa=' + path.join(output_prefix, 'adapters.fa')
@@ -348,13 +414,16 @@ def run_pipeline(run, genome, outdir, layout, platform, model, threads, local_fa
                 stderr=f_stderr)
         f_stdout.close()
         f_stderr.close()
-        # Normalizing
+        # Normalizing (explicit -Xmx: BBTools would otherwise size the heap from the node's RAM)
         print('Normalizing ...')
-        subprocess.run([get_bbmap_command_path('repair.sh'), 'in1=' + path.join(output_prefix,'output_1.fastq'), 'in2=' + path.join(output_prefix, 'output_2.fastq'),
-                       'out1=' + path.join(output_prefix, 'fixed_output_1.fastq'), 'out2=' + path.join(output_prefix, 'fixed_output_2.fastq'), 'outsingle=' + path.join(output_prefix, 'orphans.fastq')], check=True)
-        subprocess.run([get_bbmap_command_path('bbnorm.sh'), 'qin=33', 'in1=' + path.join(output_prefix,'fixed_output_1.fastq'), 'in2=' + path.join(output_prefix, 'fixed_output_2.fastq'),
-                       'out1=' + path.join(output_prefix, 'normalized_1.fastq'), 'out2=' + path.join(output_prefix, 'normalized_2.fastq'), 'target=' + '100', 'prefilter=t',
-                       'threads=' + threads], check=True)
+        subprocess.run([get_bbmap_command_path('repair.sh'), java_xmx(mem_gb),
+                        'in1=' + path.join(output_prefix, 'output_1.fastq'), 'in2=' + path.join(output_prefix, 'output_2.fastq'),
+                        'out1=' + path.join(output_prefix, 'fixed_output_1.fastq'), 'out2=' + path.join(output_prefix, 'fixed_output_2.fastq'),
+                        'outsingle=' + path.join(output_prefix, 'orphans.fastq')], check=True)
+        subprocess.run([get_bbmap_command_path('bbnorm.sh'), java_xmx(mem_gb), 'qin=33',
+                        'in1=' + path.join(output_prefix, 'fixed_output_1.fastq'), 'in2=' + path.join(output_prefix, 'fixed_output_2.fastq'),
+                        'out1=' + path.join(output_prefix, 'normalized_1.fastq'), 'out2=' + path.join(output_prefix, 'normalized_2.fastq'),
+                        'target=' + '100', 'prefilter=t', 'threads=' + threads], check=True)
         return (True, '', 'paired')
 
 
@@ -461,9 +530,11 @@ def read_sam_errors(file_path):
 if __name__ == '__main__':
     # parse the arguments, exclude the script name
     args = parse_args(argv[1:])
-    # use the CPUs actually allocated to this job (Slurm/Apptainer aware)
+    # use the CPUs and memory actually allocated to this job (Slurm/Apptainer aware)
     args.threads_num = resolve_threads(getattr(args, 'threads_num', None))
     print('Using {} threads'.format(args.threads_num))
+    args.mem_gb = resolve_mem_gb(getattr(args, 'mem_gb', None))
+    print('Using {:.0f} GB memory limit (BBTools {})'.format(args.mem_gb, java_xmx(args.mem_gb)))
     # convert many arguments to absolute path
     if not path.isabs(args.outdir):
         args.outdir = path.abspath(args.outdir)
@@ -575,6 +646,7 @@ if __name__ == '__main__':
             platform=platform,
             model=model,
             threads=args.threads_num,
+            mem_gb=args.mem_gb,
             local_fastq=local_fastq,
             )
         if return_status:

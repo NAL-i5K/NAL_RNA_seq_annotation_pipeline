@@ -18,6 +18,20 @@ def threads_type(value):
     return str(n)
 
 
+def mem_type(value):
+    """Accept 'auto' (use the job's memory limit) or a positive number of GB."""
+    value = str(value).strip().lower()
+    if value in ('auto', '0', ''):
+        return 'auto'
+    try:
+        n = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError('must be a number of GB or "auto", got "{}"'.format(value))
+    if n <= 0:
+        raise argparse.ArgumentTypeError('must be a positive number of GB or "auto", got "{}"'.format(value))
+    return str(n)
+
+
 def prefix_type(value):
     """Validate a user-supplied filename prefix: letters, digits, underscores; case kept."""
     value = value.strip()
@@ -59,6 +73,10 @@ def parse_args(argv):
                         help="Number of threads to use, or 'auto' to use all CPUs allocated to the job "
                              "(e.g. by Slurm --cpus-per-task). Values above the allocation are capped. "
                              "Default: %(default)s")
+    parser.add_argument('-M', '--mem_gb', dest='mem_gb', type=mem_type, default='auto',
+                        help="Memory available to the pipeline in GB, or 'auto' to use the job's "
+                             "Slurm/cgroup memory limit. Java heaps (BBTools) are capped at 80%% of this. "
+                             "Values above the limit are capped. Default: %(default)s")
     parser.add_argument('-R', '--Run_prefix', dest='Run_prefix', default=False, action='store_true',
                         help='if specified, use Run number as output prefix (overrides --prefix)')
     args = parser.parse_args(argv)

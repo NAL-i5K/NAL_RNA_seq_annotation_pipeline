@@ -1,5 +1,7 @@
 # NAL RNA-Seq Annotation Pipeline
 
+**Current release: 2026.10.26**
+
 An RNA-Seq alignment pipeline that produces BAM, CSI index, bigWig coverage, and
 splice-junction BED tracks for genome assemblies, and loads them into JBrowse/Apollo
 for the i5k Workspace. It is built on
@@ -16,7 +18,7 @@ UCSC `wigToBigWig`, and
 [bam_to_bigwig](https://github.com/NAL-i5K/bam_to_bigwig).
 
 The pipeline is distributed as a Docker image, which is converted to an Apptainer
-image for HPC use.
+image for HPC use. Releases use calendar versions (`YYYY.MM.DD`).
 
 ## Overview
 
@@ -58,8 +60,6 @@ HISAT2 index are kept.
 
 ### Output files (pipeline)
 
-Output files are named after the scientific name:
-
 | Scientific name | File prefix |
 |---|---|
 | `Apis mellifera` | `Apis_mellifera` |
@@ -84,6 +84,12 @@ directories, and new species use full names. The loaders detect which applies:
 | New species | `Genus_species[_subspecies]` |
 | `--species_dir` given | Exactly that |
 | Both legacy and full-name directories exist | Stops; choose with `--species_dir` |
+
+`--species_dir` (aliases `-g`, `--gggsss`) accepts letters, digits, and underscores,
+so both `apimel` and `Saccharomyces_eubayanus` are valid. If an underscore is rejected
+with "must contain only letters and digits", you are running a pre-2026.10.26 copy of
+the loader scripts. Replace `add_trackList.py`, `move_data.py`, and `i5k_naming.py`
+with the current versions.
 
 The analyses folder is `<species_dir>-RNA-Seq_v1.0`, shared by all RNA-Seq datasets for
 an assembly. The dated file names keep datasets distinct.
@@ -110,7 +116,7 @@ Tool versions are set as `ARG`s at the top of the `Dockerfile`.
 | Picard | 3.5.0 |
 | regtools | 1.0.0 |
 | RSEM, NCBI EDirect | Ubuntu 24.04 packages |
-| wigToBigWig | UCSC binary (see Dockerfile; checksum recorded in the release notes) |
+| wigToBigWig | UCSC binary, installed with rsync from `hgdownload.soe.ucsc.edu` (SHA-256 recorded in the release notes) |
 | bam_to_bigwig | pinned commit (`BAM_TO_BIGWIG_COMMIT`) |
 
 The exact versions in each release are listed in `release-<version>.txt`.
@@ -122,30 +128,25 @@ The exact versions in each release are listed in `release-<version>.txt`.
 ```shell
 git clone https://github.com/NAL-i5K/NAL_RNA_seq_annotation_pipeline.git
 cd NAL_RNA_seq_annotation_pipeline
-docker build -t nal-rnaseq:2.0.0 .
+docker build --pull --no-cache --progress=plain -t nal-rnaseq:2026.10.26 . 2>&1 | tee build-2026.10.26.log
 ```
 
-For a release build, use `--pull --no-cache` so the base image and all packages are
-current:
-
-```shell
-docker build --pull --no-cache --progress=plain -t nal-rnaseq:2.0.0 . 2>&1 | tee build-2.0.0.log
-```
+The build needs outbound TCP port 873 (rsync) for the wigToBigWig download.
 
 ### Convert to Apptainer
 
 On the machine where the image was built:
 
 ```shell
-apptainer build nal-rnaseq_2.0.0.sif docker-daemon:nal-rnaseq:2.0.0
+apptainer build nal-rnaseq_2026.10.26.sif docker-daemon:nal-rnaseq:2026.10.26
 ```
 
 Building on one machine and running on another:
 
 ```shell
-docker save nal-rnaseq:2.0.0 -o nal-rnaseq_2.0.0.tar
+docker save nal-rnaseq:2026.10.26 -o nal-rnaseq_2026.10.26.tar
 # copy the .tar to the cluster, then:
-apptainer build nal-rnaseq_2.0.0.sif docker-archive:nal-rnaseq_2.0.0.tar
+apptainer build nal-rnaseq_2026.10.26.sif docker-archive:nal-rnaseq_2026.10.26.tar
 ```
 
 After any code change, rebuild the Docker image **and** reconvert the SIF.
@@ -197,6 +198,7 @@ RNAseq_annotate.py (-i INPUT | -d FASTQ_DIR -s "Genus species") -g GENOME [optio
 | `-t, --tempFile` | Keep intermediate files |
 | `-m, --MaximumSRA` | SRA mode only: randomly select at most this many runs. Default 10 |
 | `-T, --threads_num` | Number of threads, or `auto` (default) to use all CPUs allocated to the job. Values above the allocation are capped |
+| `-M, --mem_gb` | Memory in GB, or `auto` (default) to use the job's Slurm/cgroup memory limit. BBTools Java heaps are capped at 80% of this. Values above the limit are capped |
 | `-R, --Run_prefix` | Name outputs after the first run ID. Cannot be combined with `--prefix` |
 
 Exactly one of `-i` or `-d` must be given. The output name is decided and printed
@@ -240,7 +242,7 @@ Pairs are detected from file names:
 Preview the pairing without running the pipeline:
 
 ```shell
-apptainer exec --cleanenv --bind "$FASTQ" nal-rnaseq_2.0.0.sif python3 -c \
+apptainer exec --cleanenv --bind "$FASTQ" nal-rnaseq_2026.10.26.sif python3 -c \
   "from rnannot.RNAseq_annotate import discover_local_fastq; discover_local_fastq('$FASTQ')"
 ```
 
@@ -268,7 +270,7 @@ symlinked project paths resolve correctly.
 
 module load apptainer
 
-SIF=$(readlink -f /project/nal_genomics/tools/nal-rnaseq/nal-rnaseq_2.0.0.sif)
+SIF=$(readlink -f /project/nal_genomics/tools/nal-rnaseq/nal-rnaseq_2026.10.26.sif)
 WORK=$(readlink -f /project/nal_genomics/$USER/rnaseq/apis)
 
 # SRA mode
@@ -283,17 +285,23 @@ apptainer exec --cleanenv --bind "$WORK" --pwd "$WORK" "$SIF" \
 #         --model "Illumina HiSeq 2500" -g "$WORK/genome.fna.gz" -a Amel_HAv3.1 -o "$WORK"
 ```
 
-### Threads (`-T`)
+### Threads (`-T`) and memory (`-M`)
 
-- If `-T` is not given, the pipeline uses every CPU Slurm allocated to the job. It
-  detects this from the process's CPU affinity, so it works with `--cleanenv`.
-- The job log shows `Using N threads`. N should match `--cpus-per-task`.
+- By default the pipeline uses every CPU and all the memory Slurm allocated to the job.
+  Both are detected from the process itself (CPU affinity and the cgroup memory
+  limit), so detection works with `--cleanenv`.
+- The job log shows `Using N threads` and `Using N GB memory limit (BBTools -Xmx...)`.
+  These should match `--cpus-per-task` and `--mem`.
+- BBTools (BBNorm, BBMerge, repair.sh) get an explicit `-Xmx` of 80% of the limit.
+  Without it, BBTools size their heap from the whole node's RAM, which can exceed the
+  job's allocation and cause an OOM kill.
+- If the log warns that no cgroup memory limit was found (e.g. outside Slurm), pass
+  `-M` with the memory you want the run to use.
 - Always set `--cpus-per-task`. Without it, Slurm allocates one CPU and the pipeline
   runs single-threaded.
 - If you wrap the command in `srun`, repeat the CPU request:
   `srun --cpus-per-task="$SLURM_CPUS_PER_TASK" apptainer exec ...`
-- Raise `--mem` along with `--cpus-per-task`, because `samtools sort` memory is per
-  thread.
+- `samtools sort` memory is per thread, so raise `--mem` along with `--cpus-per-task`.
 
 ### Monitoring
 
@@ -320,7 +328,7 @@ add_trackList.py -op OUTPUT_PATH -j JBROWSE_SIF -bam BAM -bigwig BIGWIG \
 | `-bam`, `-bigwig`, `-csi`, `-bed` | Pipeline output files |
 | `-track, --input_track` | `trackList.json` path (a `.bak` backup is written first) |
 | `-s, --Source` | `Source.txt` from the pipeline run |
-| `--species_dir` (alias `-g`, `--gggsss`) | Species directory. Default: existing legacy directory, otherwise full name |
+| `--species_dir` (aliases `-g`, `--gggsss`) | Species directory (letters, digits, underscores). Default: existing legacy directory, otherwise full name |
 | `--prefix` | File prefix used by the pipeline. Use the same value given to the pipeline's `--prefix` |
 | `--overwrite` | Replace files that already exist in the analyses folder |
 | `--dry_run` | Print the resolved paths and exit without copying or editing anything |
@@ -403,12 +411,14 @@ python -m unittest -f tests/test_parser.py
 Quick checks after rebuilding the SIF:
 
 ```shell
-apptainer exec --cleanenv nal-rnaseq_2.0.0.sif RNAseq_annotate.py --help
-apptainer exec --cleanenv nal-rnaseq_2.0.0.sif python3 -c "
-from rnannot.RNAseq_annotate import make_name_prefix as m
+apptainer exec --cleanenv nal-rnaseq_2026.10.26.sif RNAseq_annotate.py --help
+apptainer exec --cleanenv nal-rnaseq_2026.10.26.sif python3 -c "
+from rnannot.RNAseq_annotate import make_name_prefix, resolve_mem_gb, java_xmx
 for n in ['Saccharomyces eubayanus', 'Apis mellifera ligustica', 'Brassica rapa subsp. pekinensis']:
-    print(n, '->', m(n))"
+    print(n, '->', make_name_prefix(n))
+m = resolve_mem_gb('auto'); print('memory limit GB:', round(m), java_xmx(m))"
 ```
 
 Expected output: `Saccharomyces_eubayanus`, `Apis_mellifera_ligustica`,
-`Brassica_rapa_pekinensis`.
+`Brassica_rapa_pekinensis`, then the job's memory limit (run the second check inside a
+Slurm job to see the cgroup limit).
