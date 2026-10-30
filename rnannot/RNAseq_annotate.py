@@ -46,7 +46,44 @@ def make_name_prefix(scientific_name):
     """Genus_species[_subspecies] from a scientific name, safe for filenames."""
     return '_'.join(parse_scientific_name(scientific_name))
 
+def _clean_name(name):
+    """Reduce a name to letters, digits and underscores (same rule as --prefix)."""
+    name = re.sub(r'[^A-Za-z0-9_]+', '_', name)
+    return re.sub(r'_+', '_', name).strip('_')
 
+
+def make_input_name_prefix(sample_names):
+    """Common leading tokens of the sample names.
+
+    e.g. Zacosmia_maculata_Head, Zacosmia_maculata_Thorax -> Zacosmia_maculata.
+    Names are split on '_', '.' and '-' so the prefix always ends on a whole token.
+    """
+    names = sorted(set(sample_names))
+    if len(names) == 1:
+        prefix = names[0]
+    else:
+        common = []
+        for parts in zip(*(re.split(r'[._-]', n) for n in names)):
+            if len(set(parts)) != 1:
+                break
+            common.append(parts[0])
+        prefix = '_'.join(common)
+    prefix = _clean_name(prefix)
+    if not prefix:
+        raise ValueError('input sample names have no common prefix: {}'.format(', '.join(names)))
+    return prefix
+
+
+def make_tsv_name_prefix(tsv_path):
+    """Input TSV file name without its extension(s), e.g. Apis_runs.tsv.gz -> Apis_runs."""
+    name = path.basename(tsv_path)
+    for ext in ('.gz', '.tsv', '.txt', '.csv'):
+        if name.lower().endswith(ext):
+            name = name[:-len(ext)]
+    prefix = _clean_name(name)
+    if not prefix:
+        raise ValueError('cannot derive a prefix from the file name "{}"'.format(path.basename(tsv_path)))
+    return prefix
 def resolve_threads(requested):
     """Return the thread count as a string, based on the CPUs this job may use.
 
@@ -760,12 +797,23 @@ if __name__ == '__main__':
         if args.prefix:
             name_prefix = args.prefix
             print('Using supplied file name prefix: {}'.format(name_prefix))
+        elif args.input_prefix:
+            try:
+                if args.fastq_dir:
+                    name_prefix = make_input_name_prefix(runs)
+                    source = 'common prefix of the FASTQ sample names'
+                else:
+                    name_prefix = make_tsv_name_prefix(args.input)
+                    source = 'input TSV file name'
+            except ValueError as e:
+                print('ERROR: {}. Use --prefix to set a name explicitly.'.format(e))
+                exit(1)
+            print('File name prefix from {}: {}'.format(source, name_prefix))
         else:
             name_prefix = make_name_prefix(scientific_names[0])
             print('Derived file name prefix: {}'.format(name_prefix))
         new_name = name_prefix + '_' + args.assembly + '_RNA-Seq-alignments_' + date
     print('Output files will be named: {}.*'.format(new_name))
-
     single_files_for_merge = []
     paired1_files_for_merge = []
     paired2_files_for_merge = []

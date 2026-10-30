@@ -1,5 +1,4 @@
 # NAL RNA-Seq Annotation Pipeline
-
 **Current release: 2026.10.26**
 
 An RNA-Seq alignment pipeline that produces BAM, CSI index, bigWig coverage, and
@@ -39,11 +38,14 @@ Outputs, in `<outdir>/<name>/`:
 
 | File | Description |
 |---|---|
-| `<Genus_species>_<assembly>_RNA-Seq-alignments_<date>.bam` | Coordinate-sorted alignments |
-| `<Genus_species>_<assembly>_RNA-Seq-alignments_<date>.bam.csi` | CSI index |
-| `<Genus_species>_<assembly>_RNA-Seq-alignments_<date>.bigwig` | Coverage track |
-| `<Genus_species>_<assembly>_RNA-Seq-alignments_<date>.bed` | Splice junctions |
+| `<prefix>_<assembly>_RNA-Seq-alignments_<date>.bam` | Coordinate-sorted alignments |
+| `<prefix>_<assembly>_RNA-Seq-alignments_<date>.bam.csi` | CSI index |
+| `<prefix>_<assembly>_RNA-Seq-alignments_<date>.bigwig` | Coverage track |
+| `<prefix>_<assembly>_RNA-Seq-alignments_<date>.bed` | Splice junctions |
 | `Source.txt` | Scientific name, assembly name, date, and list of runs/samples |
+
+`<prefix>` is `Genus_species[_subspecies]` by default. See [Naming](#naming) for the
+other options. `<date>` is the day the pipeline runs.
 
 With `-t/--tempFile`, intermediate SAM/BAM files, merged normalized FASTQs, and the
 HISAT2 index are kept.
@@ -60,6 +62,19 @@ HISAT2 index are kept.
 
 ### Output files (pipeline)
 
+Choose **at most one** of these options. Combining them is an error.
+
+| Option | Output name |
+|---|---|
+| *(none)* | `Genus_species[_subspecies]_<assembly>_RNA-Seq-alignments_<date>` from the scientific name |
+| `--prefix NAME` | `NAME_<assembly>_RNA-Seq-alignments_<date>` |
+| `--input_prefix` | `<prefix from input file names>_<assembly>_RNA-Seq-alignments_<date>` |
+| `-R, --Run_prefix` | The first run ID (SRA mode) or first sample name (local mode), used as the whole name |
+
+The output name is printed before any processing starts. Check it in the job log.
+
+#### From the scientific name (default)
+
 | Scientific name | File prefix |
 |---|---|
 | `Apis mellifera` | `Apis_mellifera` |
@@ -71,7 +86,41 @@ HISAT2 index are kept.
 - Names with a strain or cultivar label keep it as the last part
   (`Saccharomyces cerevisiae S288C` → `Saccharomyces_cerevisiae_S288C`). Use `--prefix`
   to choose something else.
-- `-R/--Run_prefix` names the outputs after the first run ID instead.
+
+#### `--prefix`
+
+Used as given. Only letters, digits, and underscores are allowed. Case is kept.
+
+#### `--input_prefix`
+
+- **Local mode (`-d`):** the prefix is the leading part shared by all sample names.
+  Sample names are the file names with the extension and the read suffix
+  (`_R1`, `_2`, `_R1_001`, ...) removed. They are compared as whole words split on `_`,
+  `.`, and `-`, so the prefix never ends in the middle of a word.
+- **SRA mode (`-i`):** the prefix is the TSV file name without `.tsv`, `.txt`, `.csv`,
+  or `.gz`.
+- Characters other than letters, digits, and underscores become `_`. Rank words are
+  not removed and case is not changed.
+- If the sample names share no leading word, the run stops before processing and
+  asks you to use `--prefix`.
+
+| Input | Prefix |
+|---|---|
+| `Zacosmia_maculata_Abdomen_R1/R2`, `Zacosmia_maculata_Head_R1/R2`, `Zacosmia_maculata_Thorax_R1/R2` (`.fastq.gz`) | `Zacosmia_maculata` |
+| `sampleA_S1_L001_R1_001.fastq.gz` … `sampleA_S1_L002_R2_001.fastq.gz` | `sampleA_S1` |
+| A single sample, `sampleB.fastq.gz` | `sampleB` (the whole sample name) |
+| `Ctrl_rep1_R1.fq.gz` … and `Heat_rep1_R1.fq.gz` … | Stops: no common prefix |
+| `-i Apis_runs.tsv` | `Apis_runs` |
+| `-i 1049336.tsv` | `1049336` (usually not what you want; use the default or `--prefix`) |
+
+`--input_prefix` is most useful when the file names carry a label that differs from
+the species name. When the files already start with `Genus_species`, as in the
+Zacosmia example, it gives the same result as the default.
+
+#### `-R/--Run_prefix`
+
+The whole output name is the first run ID or sample name, with no assembly or date
+added. Local samples are sorted by name, so this is the alphabetically first sample.
 
 ### JBrowse species directories (loaders)
 
@@ -180,26 +229,33 @@ The output tsv is the `-i` input for `RNAseq_annotate.py`.
 ### Run the pipeline
 
 ```shell
-RNAseq_annotate.py (-i INPUT | -d FASTQ_DIR -s "Genus species") -g GENOME [options]
+RNAseq_annotate.py (-i INPUT | -d FASTQ_DIR -s "Genus species") -g GENOME
+                   [-R | --prefix PREFIX | --input_prefix] [options]
 ```
 
 | Option | Description |
 |---|---|
 | `-i, --input` | SRA metadata tsv (from `download_sra_metadata*.py`) |
 | `-d, --fastq_dir` | Directory of local FASTQ files. Use instead of `-i`. Requires `-s` |
-| `-s, --species` | Scientific name, e.g. `"Apis mellifera"` or `"Apis mellifera ligustica"`. Required with `-d` |
+| `-s, --species` | Scientific name, e.g. `"Apis mellifera"` or `"Apis mellifera ligustica"`. Required with `-d`, even with `--input_prefix` (it is written to `Source.txt`) |
 | `--platform` | Platform for local files. Default `ILLUMINA` |
 | `--model` | Instrument model for local files, e.g. `"Illumina HiSeq 2500"` or `"Element AVITI"`. Selects the adapter set |
-| `--prefix` | Output file prefix. Default: `Genus_species[_subspecies]` from the scientific name |
 | `-g, --genome` | Genome FASTA (`.gz` accepted). Required |
 | `-n, --name` | Output folder name (must not already exist). Default: start time |
 | `-o, --outdir` | Parent directory for the output folder (must already exist). Default: current folder |
-| `-a, --assembly` | Assembly name, used in output file names |
+| `-a, --assembly` | Assembly name, used in output file names. Default `AssemblyName` |
 | `-t, --tempFile` | Keep intermediate files |
 | `-m, --MaximumSRA` | SRA mode only: randomly select at most this many runs. Default 10 |
 | `-T, --threads_num` | Number of threads, or `auto` (default) to use all CPUs allocated to the job. Values above the allocation are capped |
 | `-M, --mem_gb` | Memory in GB, or `auto` (default) to use the job's Slurm/cgroup memory limit. BBTools Java heaps are capped at 80% of this. Values above the limit are capped |
-| `-R, --Run_prefix` | Name outputs after the first run ID. Cannot be combined with `--prefix` |
+
+Output naming (use at most one; see [Naming](#naming)):
+
+| Option | Description |
+|---|---|
+| `--prefix` | Output file prefix (letters, digits, underscores). Default: `Genus_species[_subspecies]` from the scientific name |
+| `--input_prefix` | Take the prefix from the input file names: the common start of the sample names with `-d`, or the TSV file name with `-i` |
+| `-R, --Run_prefix` | Use the first run ID or sample name as the whole output name |
 
 Exactly one of `-i` or `-d` must be given. The output name is decided and printed
 before any processing starts.
@@ -234,16 +290,20 @@ Pairs are detected from file names:
 
 - Detected samples are printed at startup. The run stops before processing if there
   are duplicate read files or a sample has both single and paired files.
+- A sample with only a read-2 file is processed as single-end, with a warning.
 - Plain FASTQs are symlinked (originals are never modified or deleted). Gzipped FASTQs
   are decompressed into the run folder and removed at cleanup.
 - Multi-lane samples are processed separately and merged before alignment.
 - `-m/--MaximumSRA` does not apply. Every file is used.
+- With `--input_prefix`, the output prefix is the common start of these sample names.
 
-Preview the pairing without running the pipeline:
+Preview the pairing and the `--input_prefix` name without running the pipeline:
 
 ```shell
-apptainer exec --cleanenv --bind "$FASTQ" nal-rnaseq_2026.10.26.sif python3 -c \
-  "from rnannot.RNAseq_annotate import discover_local_fastq; discover_local_fastq('$FASTQ')"
+apptainer exec --cleanenv --bind "$FASTQ" nal-rnaseq_2026.10.26.sif python3 -c "
+from rnannot.RNAseq_annotate import discover_local_fastq, make_input_name_prefix
+samples = discover_local_fastq('$FASTQ')
+print('--input_prefix gives:', make_input_name_prefix([s[0] for s in samples]))"
 ```
 
 ### Adapter selection
@@ -269,7 +329,6 @@ symlinked project paths resolve correctly.
 #SBATCH --error=rnannot_%j.err
 
 module load apptainer
-
 SIF=$(readlink -f /project/nal_genomics/tools/nal-rnaseq/nal-rnaseq_2026.10.26.sif)
 WORK=$(readlink -f /project/nal_genomics/$USER/rnaseq/apis)
 
@@ -283,20 +342,24 @@ apptainer exec --cleanenv --bind "$WORK" --pwd "$WORK" "$SIF" \
 # apptainer exec --cleanenv --bind "$WORK" --bind "$FASTQ" --pwd "$WORK" "$SIF" \
 #     RNAseq_annotate.py -d "$FASTQ" -s "Apis mellifera ligustica" \
 #         --model "Illumina HiSeq 2500" -g "$WORK/genome.fna.gz" -a Amel_HAv3.1 -o "$WORK"
+# Add --input_prefix to name the outputs after the FASTQ file names instead of the species.
 ```
 
 ### Threads (`-T`) and memory (`-M`)
 
 - By default the pipeline uses every CPU and all the memory Slurm allocated to the job.
-  Both are detected from the process itself (CPU affinity and the cgroup memory
-  limit), so detection works with `--cleanenv`.
-- The job log shows `Using N threads` and `Using N GB memory limit (BBTools -Xmx...)`.
-  These should match `--cpus-per-task` and `--mem`.
+  CPUs come from the process's CPU affinity. Memory is the smaller of the Slurm
+  allocation and the cgroup memory limit. The Slurm values are read from the parent
+  batch shell when `--cleanenv` removes them, so detection works with `--cleanenv`.
+- The job log shows `Using N threads`, `Memory limit source: ...`, and
+  `Using N GB memory limit (BBTools -Xmx...)`. These should match `--cpus-per-task`
+  and `--mem`.
 - BBTools (BBNorm, BBMerge, repair.sh) get an explicit `-Xmx` of 80% of the limit.
   Without it, BBTools size their heap from the whole node's RAM, which can exceed the
-  job's allocation and cause an OOM kill.
-- If the log warns that no cgroup memory limit was found (e.g. outside Slurm), pass
-  `-M` with the memory you want the run to use.
+  job's allocation and cause an OOM kill. Trimmomatic gets 80% of at most 10 GB.
+- Inside a Slurm job, if the memory limit can't be determined, the run stops and asks
+  for `-M`. Outside Slurm, all physical RAM is assumed, with a warning; pass `-M` to
+  set the memory you want the run to use.
 - Always set `--cpus-per-task`. Without it, Slurm allocates one CPU and the pipeline
   runs single-threaded.
 - If you wrap the command in `srun`, repeat the CPU request:
@@ -329,7 +392,7 @@ add_trackList.py -op OUTPUT_PATH -j JBROWSE_SIF -bam BAM -bigwig BIGWIG \
 | `-track, --input_track` | `trackList.json` path (a `.bak` backup is written first) |
 | `-s, --Source` | `Source.txt` from the pipeline run |
 | `--species_dir` (aliases `-g`, `--gggsss`) | Species directory (letters, digits, underscores). Default: existing legacy directory, otherwise full name |
-| `--prefix` | File prefix used by the pipeline. Use the same value given to the pipeline's `--prefix` |
+| `--prefix` | File prefix used by the pipeline. Give the value passed to the pipeline's `--prefix`, or, if the pipeline ran with `--input_prefix`, the prefix it printed (`File name prefix from ...: <prefix>`) |
 | `--overwrite` | Replace files that already exist in the analyses folder |
 | `--dry_run` | Print the resolved paths and exit without copying or editing anything |
 
@@ -387,18 +450,32 @@ add_trackList.py -op /app/data/other_species -j /path/to/jbrowse.sif \
 # 5. Load (same command without --dry_run)
 ```
 
+### Local FASTQ example with `--input_prefix`
+
+```shell
+# Zacosmia_maculata_{Abdomen,Head,Thorax}_R{1,2}.fastq.gz in $FASTQ
+RNAseq_annotate.py -d "$FASTQ" -s "Zacosmia maculata" -g genome.fa.gz \
+    -a <assembly> --input_prefix -o "$WORK" -n zmac_rnaseq
+#   -> three paired samples: Zacosmia_maculata_Abdomen, _Head, _Thorax
+#   -> Zacosmia_maculata_<assembly>_RNA-Seq-alignments_<date>.bam / .bam.csi / .bigwig / .bed
+```
+
 ## Notes
 
 - **SRA Toolkit configuration.** Current SRA Toolkit releases don't need interactive
   configuration. If downloads fail, run `vdb-config --restore-defaults`.
 - **Disk space.** `fasterq-dump` needs roughly 17× the accession size during
-  conversion, and the pipeline writes uncompressed SAM files before sorting. Run in a
-  project or scratch directory, not `$HOME`.
+  conversion, and the pipeline writes uncompressed SAM files before sorting. Local
+  gzipped FASTQs are decompressed, and trimmed, repaired, and normalized copies are
+  written alongside them. Run in a project or scratch directory, not `$HOME`.
 - **Normalization.** Reads are normalized with BBNorm before alignment. The bigWig
   shows normalized depth for annotation evidence, not expression levels.
 - **Local samples in JBrowse metadata.** The "Data source" field links each entry in
   `Source.txt` to an SRA search. For local-mode runs these are sample names, so the
   links won't resolve.
+- **Reruns after an early error.** The output folder and `Source.txt` are created
+  before the naming check. If the run stops on a naming error, remove
+  `<outdir>/<name>/` or choose a new `-n` before rerunning.
 - **Legacy Docker Hub image.** `k2025242322/i5k_rna_seq_annotation_pipeline` predates
   this release. Use the image built from this repository.
 
@@ -412,13 +489,23 @@ Quick checks after rebuilding the SIF:
 
 ```shell
 apptainer exec --cleanenv nal-rnaseq_2026.10.26.sif RNAseq_annotate.py --help
+
 apptainer exec --cleanenv nal-rnaseq_2026.10.26.sif python3 -c "
-from rnannot.RNAseq_annotate import make_name_prefix, resolve_mem_gb, java_xmx
+from rnannot.RNAseq_annotate import make_name_prefix, make_input_name_prefix, resolve_mem_gb, java_xmx
 for n in ['Saccharomyces eubayanus', 'Apis mellifera ligustica', 'Brassica rapa subsp. pekinensis']:
     print(n, '->', make_name_prefix(n))
+print(make_input_name_prefix(['Zacosmia_maculata_Abdomen', 'Zacosmia_maculata_Head', 'Zacosmia_maculata_Thorax']))
 m = resolve_mem_gb('auto'); print('memory limit GB:', round(m), java_xmx(m))"
 ```
 
 Expected output: `Saccharomyces_eubayanus`, `Apis_mellifera_ligustica`,
-`Brassica_rapa_pekinensis`, then the job's memory limit (run the second check inside a
-Slurm job to see the cgroup limit).
+`Brassica_rapa_pekinensis`, `Zacosmia_maculata`, then the job's memory limit (run the
+second check inside a Slurm job to see the cgroup limit).
+
+Conflicting naming options should be rejected:
+
+```shell
+apptainer exec --cleanenv nal-rnaseq_2026.10.26.sif \
+  RNAseq_annotate.py -d . -s "Apis mellifera" -g x.fa --input_prefix -R
+# error: argument -R/--Run_prefix: not allowed with argument --input_prefix
+```
