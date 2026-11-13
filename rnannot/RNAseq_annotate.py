@@ -637,6 +637,72 @@ def make_bigwig(bam_path, bigwig_path, threads):
                 os.remove(leftover)
         raise RuntimeError('bam_to_bigwig.py did not produce ' + bigwig_path)
 
+def sample_label(sample, strip_prefixes):
+    """Sample name without a leading species/prefix part, e.g. Zacosmia_maculata_Head -> Head."""
+    s = _clean_name(sample)
+    for p in strip_prefixes:
+        if p and s == p:
+            return ''
+        if p and s.startswith(p + '_'):
+            return s[len(p) + 1:]
+    return s
+
+
+def write_source(source_path, scientific_name, assembly, date, runs):
+    with open(source_path, 'w') as f:
+        f.write(scientific_name + '\n' + assembly + '\n' + date + '\n')
+        for run in runs:
+            f.write(run + '\n')
+
+
+def cleanup_run_dir(run_dir, run):
+    """Remove FASTQ copies and FastQC zips/folders from one sample's directory."""
+    for fq in glob.glob(path.join(run_dir, '*.fastq')):
+        os.remove(fq)       # symlinks or decompressed copies; originals are never touched
+    for item in glob.glob(path.join(run_dir, run + '_*_fastqc*')):
+        if path.isdir(item):
+            shutil.rmtree(item)
+        elif path.exists(item):
+            os.remove(item)
+
+
+def align_sample(work_dir, layout, index_prefix, out_name, threads, sort_mem, keep_temp):
+    """Align one sample's normalized reads; write <out_name>.bam/.bam.csi/.bigwig/.bed in work_dir."""
+    sam = path.join(work_dir, 'aligned.sam')
+    bam = path.join(work_dir, 'output.bam')
+    cmd = [get_hisat2_command_path('hisat2'), '--dta-cufflinks', '--no-mixed', '--no-discordant',
+           '-p', threads, '-x', index_prefix]
+    if layout == 'single':
+        cmd += ['-U', path.join(work_dir, 'normalized.fastq')]
+    else:
+        cmd += ['-1', path.join(work_dir, 'normalized_1.fastq'),
+                '-2', path.join(work_dir, 'normalized_2.fastq')]
+    cmd += ['-S', sam]
+    print('Aligning ...')
+    with open(path.join(work_dir, 'hisat2.log'), 'w') as f_out, \
+         open(path.join(work_dir, 'hisat2.errlog'), 'w') as f_err:
+        subprocess.run(cmd, stdout=f_out, stderr=f_err, check=True)
+
+    print('Sorting ...')
+    with open(path.join(work_dir, 'samtools.log'), 'w') as f_out, \
+         open(path.join(work_dir, 'samtools.errlog'), 'w') as f_err:
+        subprocess.run(['samtools', 'sort', '-@', threads, '-m', sort_mem, '-O', 'bam',
+                        '-T', path.join(work_dir, 'sort_tmp'), '-o', bam, sam],
+                       stdout=f_out, stderr=f_err, check=True)
+    if not keep_temp:
+        os.remove(sam)
+
+    print('Generating bigwig file...')
+    make_bigwig(bam, path.join(work_dir, 'output.bigwig'), threads)
+
+    final_bam = path.join(work_dir, out_name + '.bam')
+    os.rename(bam, final_bam)
+    os.rename(bam + '.csi', final_bam + '.csi')
+    os.rename(path.join(work_dir, 'output.bigwig'), path.join(work_dir, out_name + '.bigwig'))
+
+    print('Extracting junctions...')
+    subprocess.run([get_regtools_path(), 'junctions', 'extract', '-m', '20', '-s', 'XS',
+                    '-o', path.join(work_dir, out_name + '.bed'), final_bam], check=True)
 
 def check_ref_files(ref_path):
     dict_path = path.splitext(ref_path)[0] + '.dict'
@@ -691,6 +757,14 @@ if __name__ == '__main__':
     if args.fastq_dir:
         # Local mode: metadata comes from the command line, files from the directory
         samples = discover_local_fastq(args.fastq_dir)
+        if args.samples:
+            found = {s[0] for s in samples}
+            missing = sorted(set(args.samples) - found)
+            if missing:
+                print('Sample(s) not found in {}: {}'.format(args.fastq_dir, ', '.join(missing)))
+                print('Detected samples: {}'.format(', '.join(sorted(found))))
+                exit(1)
+            samples = [s for s in samples if s[0] in set(args.samples)]
         runs = [s[0] for s in samples]
         layouts = [s[1] for s in samples]
         local_files = [(s[2], s[3]) for s in samples]
@@ -760,15 +834,40 @@ if __name__ == '__main__':
         if args.prefix:
             name_prefix = args.prefix
             print('Using supplied file name prefix: {}'.format(name_prefix))
+        elif args.input_prefix:
+            try:
+                if args.fastq_dir:
+                    name_prefix = make_input_name_prefix(runs)
+                    source = 'common prefix of the FASTQ sample names'
+                else:
+                    name_prefix = make_tsv_name_prefix(args.input)
+                    source = 'input TSV file name'
+            except ValueError as e:
+                print('ERROR: {}. Use --prefix to set a name explicitly.'.format(e))
+                exit(1)
+            print('File name prefix from {}: {}'.format(source, name_prefix))
         else:
             name_prefix = make_name_prefix(scientific_names[0])
             print('Derived file name prefix: {}'.format(name_prefix))
         new_name = name_prefix + '_' + args.assembly + '_RNA-Seq-alignments_' + date
-    print('Output files will be named: {}.*'.format(new_name))
 
+    # >>> CHANGED: was a plain print(...)
+    if not args.per_sample:
+        print('Output files will be named: {}.*'.format(new_name))
+
+    # >>> NEW: per-sample branch (step 3c), ends with exit()
+    if args.per_sample:
+        base_dir = path.join(args.outdir, args.name)
+        species_prefix = make_name_prefix(scientific_names[0])
+        ...                     # rest of the block from step 3c
+        print('Finished processing')
+        exit(0)
+
+    # existing merged-mode code continues unchanged
     single_files_for_merge = []
     paired1_files_for_merge = []
     paired2_files_for_merge = []
+
     for run, platform, model, layout, local_fastq in zip(runs, platforms, models, layouts, local_files):
         print('Processing the file: {}'.format(run))
         return_status, err_message, return_layout = run_pipeline(
@@ -793,6 +892,58 @@ if __name__ == '__main__':
                     path.join(args.outdir, args.name, run, 'normalized_2.fastq'))
         else:
             print(err_message)
+
+    if args.per_sample:
+        base_dir = path.join(args.outdir, args.name)
+        species_prefix = make_name_prefix(scientific_names[0])
+        if args.Run_prefix:
+            out_names = {r: _clean_name(r) for r in runs}
+        else:
+            out_names = {}
+            for r in runs:
+                label = sample_label(r, [name_prefix, species_prefix])
+                out_names[r] = '{}{}_{}_RNA-Seq-alignments_{}'.format(
+                    name_prefix, '_' + label if label else '', args.assembly, date)
+        if len(set(out_names.values())) != len(out_names):
+            print('ERROR: two samples would get the same output name; use -R or rename the files')
+            exit(1)
+        print('Per-sample output names:')
+        for r in runs:
+            print('  {:35s} -> {}.*'.format(r, out_names[r]))
+
+        index_prefix = path.join(base_dir, genome_file_name)
+        build_hisat2_index(genome, index_prefix, args.threads_num)   # once, shared by all samples
+
+        failed = []
+        for run, platform, model, layout, local_fastq in zip(runs, platforms, models, layouts, local_files):
+            print('Processing sample: {}'.format(run))
+            run_dir = path.join(base_dir, run)
+            try:
+                ok, err, run_layout = run_pipeline(
+                    run=run, genome=genome, outdir=base_dir, layout=layout,
+                    platform=platform, model=model, threads=args.threads_num,
+                    mem_gb=args.mem_gb, local_fastq=local_fastq)
+                if not ok:
+                    raise RuntimeError(err)
+                align_sample(run_dir, run_layout, index_prefix, out_names[run],
+                             args.threads_num, sort_mem, args.tempFile)
+                write_source(path.join(run_dir, 'Source.txt'),
+                             scientific_names[0], args.assembly, date, [run])
+            except (subprocess.CalledProcessError, RuntimeError, OSError) as e:
+                print('ERROR in sample {}: {}'.format(run, e))
+                failed.append(run)
+            finally:
+                if path.isdir(run_dir):
+                    cleanup_run_dir(run_dir, run)   # free disk before the next sample
+
+        if not args.tempFile:
+            for f in glob.glob(path.join(base_dir, genome_file_name + '.*')):
+                os.remove(f)                        # HISAT2 index files
+        if failed:
+            print('Finished with errors in: {}'.format(', '.join(failed)))
+            exit(1)
+        print('Finished processing')
+        exit(0)
 
     # merge normalized fastq files together
     if len(single_files_for_merge) > 0:

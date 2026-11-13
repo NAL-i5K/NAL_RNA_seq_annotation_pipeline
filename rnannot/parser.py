@@ -56,6 +56,12 @@ def parse_args(argv):
                         help='Instrument model for local files, e.g. "Illumina HiSeq 2500" or "Element AVITI". '
                              'Selects the adapter set; if empty, adapters are detected with BBMerge (paired) '
                              'or taken from BBMap (single).')
+    parser.add_argument('--per_sample', dest='per_sample', action='store_true',
+                        help='Local mode only: align each sample separately and write a BAM, CSI, '
+                             'bigWig and BED for every sample instead of one merged set')
+    parser.add_argument('--sample', dest='samples', action='append', default=None, metavar='NAME',
+                        help='Local mode only: process only this sample from -d (repeatable). '
+                             'Implies --per_sample')
     parser.add_argument('--prefix', dest='prefix', type=prefix_type, default=None,
                         help='File name prefix for outputs, e.g. Apis_mellifera_ligustica. '
                              'Default: Genus_species[_subspecies] from the scientific name.')
