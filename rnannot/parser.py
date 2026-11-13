@@ -41,8 +41,18 @@ def prefix_type(value):
     return value
 
 
+def sample_type(value):
+    """Validate a sample name given with --sample (as detected from -d, without read suffix)."""
+    value = value.strip()
+    if not value or '/' in value:
+        raise argparse.ArgumentTypeError(
+            'must be a sample name as detected in -d (no path), got "{}"'.format(value))
+    return value
+
+
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='Easy to use pipeline built for large-scale RNA-seq mapping with a genome assembly')
+
     # Input: either an SRA metadata tsv (-i) or a directory of local FASTQ files (-d)
     parser.add_argument('-i', '--input', dest='input', type=str, default=None,
                         help="A tsv file with a list of SRA runs' information (from an NCBI SRA metadata pull).")
@@ -56,15 +66,19 @@ def parse_args(argv):
                         help='Instrument model for local files, e.g. "Illumina HiSeq 2500" or "Element AVITI". '
                              'Selects the adapter set; if empty, adapters are detected with BBMerge (paired) '
                              'or taken from BBMap (single).')
-    parser.add_argument('--per_sample', dest='per_sample', action='store_true',
-                        help='Local mode only: align each sample separately and write a BAM, CSI, '
-                             'bigWig and BED for every sample instead of one merged set')
-    parser.add_argument('--sample', dest='samples', action='append', default=None, metavar='NAME',
-                        help='Local mode only: process only this sample from -d (repeatable). '
-                             'Implies --per_sample')
-    parser.add_argument('--prefix', dest='prefix', type=prefix_type, default=None,
-                        help='File name prefix for outputs, e.g. Apis_mellifera_ligustica. '
-                             'Default: Genus_species[_subspecies] from the scientific name.')
+
+    # Local mode: one output set per sample instead of one merged set
+    per_sample = parser.add_argument_group(
+        'per-sample outputs (local mode only)',
+        'By default all samples in -d are merged into one BAM. With these options each sample '
+        '(e.g. each tissue) gets its own BAM, CSI, bigWig and BED in <outdir>/<name>/<sample>/.')
+    per_sample.add_argument('--per_sample', dest='per_sample', default=False, action='store_true',
+                            help='align each sample in -d separately and write a full output set for each')
+    per_sample.add_argument('--sample', dest='samples', action='append', default=None,
+                            type=sample_type, metavar='NAME',
+                            help='process only this sample from -d (repeatable, e.g. '
+                                 '--sample Zacosmia_maculata_Head). Implies --per_sample')
+
     parser.add_argument('-g', '--genome', dest='genome', help='A fasta file to align with.')
     parser.add_argument('-n', '--name', nargs='?',
                         default=datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
@@ -83,15 +97,40 @@ def parse_args(argv):
                         help="Memory available to the pipeline in GB, or 'auto' to use the job's "
                              "Slurm/cgroup memory limit. Java heaps (BBTools) are capped at 80%% of this. "
                              "Values above the limit are capped. Default: %(default)s")
-    parser.add_argument('-R', '--Run_prefix', dest='Run_prefix', default=False, action='store_true',
-                        help='if specified, use Run number as output prefix (overrides --prefix)')
+
+    # Output naming: at most one of these may be given
+    naming = parser.add_argument_group(
+        'output file naming',
+        'Use at most one of these options. Default: Genus_species[_subspecies] from the '
+        'scientific name. Except with -R, the prefix is followed by '
+        '_<assembly>_RNA-Seq-alignments_<date>. With --per_sample, the sample label '
+        '(e.g. Head) is added after the prefix.')
+    name_opts = naming.add_mutually_exclusive_group()
+    name_opts.add_argument('-R', '--Run_prefix', dest='Run_prefix', default=False, action='store_true',
+                           help='use the run/sample name as the whole output name '
+                                '(the first run, or each sample with --per_sample)')
+    name_opts.add_argument('--prefix', dest='prefix', type=prefix_type, default=None,
+                           help='file name prefix for outputs, e.g. Apis_mellifera_ligustica')
+    name_opts.add_argument('--input_prefix', dest='input_prefix', default=False, action='store_true',
+                           help='derive the prefix from the input file names: the common leading '
+                                'part of the sample names with -d, or the TSV file name with -i')
+
     args = parser.parse_args(argv)
+
     if bool(args.input) == bool(args.fastq_dir):
         parser.error('specify exactly one of -i/--input or -d/--fastq_dir')
     if args.fastq_dir and (not args.species or len(args.species.split()) < 2):
         parser.error('-d/--fastq_dir requires -s/--species "Genus species"')
     if not args.genome:
         parser.error('-g/--genome is required')
-    if args.Run_prefix and args.prefix:
-        parser.error('use either -R/--Run_prefix or --prefix, not both')
+
+    # --sample implies --per_sample; both need local FASTQ input
+    if args.samples:
+        args.samples = list(dict.fromkeys(args.samples))   # drop duplicates, keep order
+        args.per_sample = True
+    if args.per_sample and not args.fastq_dir:
+        parser.error('--per_sample/--sample require -d/--fastq_dir')
+
+    # -R / --prefix / --input_prefix conflicts are rejected by the mutually exclusive group
+
     return args
